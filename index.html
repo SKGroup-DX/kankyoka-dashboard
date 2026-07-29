@@ -187,22 +187,22 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .cbar-chart{width:100%}
 .cbar-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
 .cbar-row:hover .cbar-track{opacity:.85}
-.cbar-name{width:46px;font-size:11px;font-weight:600;color:#334155;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbar-name{width:76px;font-size:11px;font-weight:600;color:#334155;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cbar-track{flex:1;display:flex;height:14px;border-radius:3px;overflow:hidden}
 .cbar-taken{height:100%;flex-shrink:0;transition:width .3s}
 .cbar-remain{height:100%;flex-shrink:0;background:#dde3eb}
 .cbar-empty{height:100%;flex-shrink:0}
-.cbar-pct{width:36px;font-size:10px;font-weight:700;text-align:right;flex-shrink:0}
-.cbar-days{width:32px;font-size:10px;color:#94a3b8;text-align:right;flex-shrink:0;white-space:nowrap}
+.cbar-pct{width:34px;font-size:10px;font-weight:700;text-align:right;flex-shrink:0}
+.cbar-days{width:30px;font-size:10px;color:#94a3b8;text-align:right;flex-shrink:0;white-space:nowrap}
 /* バー上の数字ラベル */
 .cbar-wrap{flex:1;position:relative;height:14px}
 .cbar-track{position:absolute;inset:0;display:flex;border-radius:3px;overflow:hidden}
 .cbar-bar-lbl{position:absolute;top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;pointer-events:none;z-index:1;line-height:1}
 .cbar-grp{font-size:9px;padding:0 5px;border-radius:8px;flex-shrink:0;font-weight:600}
 .cbar-axis-row{display:flex;align-items:flex-start;gap:5px;margin-top:5px;padding-top:4px;border-top:1px solid #e2e8f0}
-.cbar-name-spc{width:46px;flex-shrink:0}
+.cbar-name-spc{width:76px;flex-shrink:0}
 .cbar-axis{flex:1;position:relative;height:16px}
-.cbar-right-spc{width:68px;flex-shrink:0}
+.cbar-right-spc{width:64px;flex-shrink:0}
 
 /* Modal */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:500;align-items:center;justify-content:center}
@@ -265,9 +265,9 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   table.stbl tbody tr.current-month-row td{background:#fefce8 !important}
   #memberCard .card-sub{margin-bottom:3px}
   #memberCard .legend{margin-bottom:3px}
-  .cbar-row{margin-bottom:2px}.cbar-name{font-size:9px;width:40px}.cbar-track{height:11px}
+  .cbar-row{margin-bottom:2px}.cbar-name{font-size:9px;width:58px}.cbar-track{height:11px}
   .cbar-pct{font-size:8px;width:30px}.cbar-days{font-size:8px;width:28px}
-  .cbar-axis-row{margin-top:4px;padding-top:3px}.cbar-name-spc{width:40px}.cbar-right-spc{width:58px}
+  .cbar-axis-row{margin-top:4px;padding-top:3px}.cbar-name-spc{width:58px}.cbar-right-spc{width:58px}
   .cbar-axis span{font-size:8px !important}.cbar-grp{display:none}
   .alert-panel{padding:0}.alert-header{padding:5px 10px}.alert-body{display:block;padding:0 10px 6px}
   .alert-item{padding:4px 8px;font-size:9px}.alert-title{font-size:10px}.alert-chevron{display:none}
@@ -1332,11 +1332,12 @@ function renderMemberChart(){
     const ew=(Math.max(0,maxDays-m.days)/maxDays*100).toFixed(4);
     const bc=barColor(m.achv);
     const gc=grpColor(m.group);
-    // バー右端ラベル（取得バーの直後に数字）
+    // バー右端ラベル（取得バーの直後に数字）／ 0.5刻みが分かるよう常に小数第1位で表示
+    const takenLbl=f(m.taken,1);
     const barLabel=m.taken>0
-      ?`<span class="cbar-bar-lbl" style="left:${tw}%;transform:translateY(-50%);color:${bc};font-size:9px;font-weight:700;padding-left:3px">${m.taken}</span>`
+      ?`<span class="cbar-bar-lbl" style="left:${tw}%;transform:translateY(-50%);color:${bc};font-size:9px;font-weight:700;padding-left:3px">${takenLbl}</span>`
       :'';
-    return `<div class="cbar-row" title="取得: ${m.taken}日 / 付与: ${m.days}日（${m.achv}%）${m.group?' / '+m.group:''}">
+    return `<div class="cbar-row" title="取得: ${takenLbl}日 / 付与: ${m.days}日（${m.achv}%）${m.group?' / '+m.group:''}">
       <div class="cbar-name">${m.name}</div>
       <div class="cbar-wrap">
         <div class="cbar-track">
