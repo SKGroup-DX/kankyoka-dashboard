@@ -195,6 +195,10 @@ tr.dragging{opacity:.35}
 
 /* ── ② KPIセクションラベル ── */
 .kpi-section-lbl{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:0 2px;margin-bottom:-4px}
+/* ── モバイル専用: 残業・有休KPI 開閉タブ（PCでは非表示） ── */
+.kpi-mobile-toggle{display:none}
+/* ── モバイル専用: 残業削減サマリー 開閉タブ（PCでは非表示） ── */
+.summary-mobile-toggle{display:none}
 /* ── ③ 達成率ドーナツ ── */
 .donut-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 6px}
 .donut-item{text-align:center}
@@ -318,6 +322,26 @@ tr.dragging{opacity:.35}
   /* モバイル: 売上KPIも非表示 */
   #salesKpiGrid{display:none !important}
   .kpi-section-lbl{display:none}
+  /* モバイル: 残業・有休KPIはデフォルト非表示、タブタップで開閉 */
+  .kpi-mobile-toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    width:100%;padding:9px 14px;margin-bottom:8px;
+    background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+    font-size:12px;font-weight:700;color:#0f172a;cursor:pointer;
+  }
+  .kpi-mobile-toggle:active{background:#f8fafc}
+  #kpiGrid{display:none}
+  #kpiGrid.mobile-open{display:grid}
+  /* モバイル: 残業削減サマリーはデフォルト非表示、タブタップで開閉 */
+  .summary-mobile-toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    width:100%;padding:9px 14px;margin-bottom:8px;
+    background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+    font-size:12px;font-weight:700;color:#0f172a;cursor:pointer;
+  }
+  .summary-mobile-toggle:active{background:#f8fafc}
+  #summaryCard{display:none}
+  #summaryCard.mobile-open{display:block}
   /* モバイル: 年度目標進捗バーも非表示 */
   .prog-grid{display:none !important}
   /* モバイル: 有休月次推移カードも非表示 */
@@ -355,6 +379,11 @@ tr.dragging{opacity:.35}
 <div id="dashboardSection" class="section active">
   <div class="main">
     <div class="kpi-section-lbl">📉 残業・有休</div>
+    <!-- モバイル専用: タップで開閉するタブ（PCでは非表示） -->
+    <button type="button" class="kpi-mobile-toggle" id="kpiMobileToggle" onclick="toggleKpiPanel()">
+      <span>📉 残業・有休 サマリー</span>
+      <span id="kpiChevron" class="alert-chevron">▼</span>
+    </button>
     <div class="kpi-grid" id="kpiGrid"></div>
     <div class="kpi-section-lbl">💰 売上実績</div>
     <div class="kpi-grid" id="salesKpiGrid" style="grid-template-columns:repeat(3,1fr)"></div>
@@ -466,6 +495,11 @@ tr.dragging{opacity:.35}
     </div>
 
     <!-- サマリーテーブル -->
+    <!-- モバイル専用: タップで開閉するタブ（PCでは非表示） -->
+    <button type="button" class="summary-mobile-toggle" id="summaryMobileToggle" onclick="toggleSummaryPanel()">
+      <span>📄 残業削減サマリー</span>
+      <span id="summaryChevron" class="alert-chevron">▼</span>
+    </button>
     <div class="card" id="summaryCard">
       <div class="card-title" style="margin-bottom:7px" id="summaryTitle"></div>
       <div class="tbl-wrap"><table class="stbl" id="summaryTbl"></table></div>
@@ -713,6 +747,17 @@ const YCFG = [
 ];
 const KEYS = YCFG.map(y=>y.key);
 
+/* ═══ ② 残業グラフ配色: 今年度実績を赤で強調、前年度実績は控えめな点線に ═══ */
+const CUR_FISCAL_KEY  = String(FISCAL_YEAR);
+const OT_CUR_COLOR    = '#DC2626';              // 今年度実績（強調・赤）
+const OT_OTHER_COLORS = ['#7F77DD','#E58B28'];  // 今年度以外の実績（順番に割当）
+const OT_LINE_COLORS  = (()=>{
+  const map={}; let pi=0;
+  KEYS.forEach(k=>{ map[k] = (k===CUR_FISCAL_KEY) ? OT_CUR_COLOR : OT_OTHER_COLORS[pi++ % OT_OTHER_COLORS.length]; });
+  return map;
+})();
+const OT25_COLOR = '#94a3b8'; // 2025年度実績（前年度基準値）：控えめな配色
+
 /* ═══ ⑤ グループカラー ═══ */
 const GRP_COLORS = [
   {bg:"#dbeafe",text:"#1e40af"},{bg:"#dcfce7",text:"#166534"},
@@ -898,6 +943,7 @@ let selYear    = DEFAULT_YEAR;
 let inputYear  = DEFAULT_YEAR;
 let otChartInst=null, leaveTrendInst=null, leaveRateInst=null;
 let deleteTarget=-1, expandedRow=-1, dragSrcIdx=null, alertOpen=false, leaveTrendOpen=false;
+let otTargetVisible=false; // ① 目標値の推移はデフォルト非表示（タップで表示）
 
 /* ═══ ユーティリティ ═══ */
 const sumArr  = a=>a.reduce((s,v)=>s+(v??0),0);
@@ -913,8 +959,7 @@ function arrFindLast(arr, pred){ for(let i=arr.length-1;i>=0;i--){ if(pred(arr[i
 
 /* ═══ ヘッダー ═══ */
 function renderTodayBadge(){
-  const mm=String(TODAY.getMonth()+1).padStart(2,"0"), dd=String(TODAY.getDate()).padStart(2,"0");
-  document.getElementById("todayBadge").textContent=`${CAL_YEAR}年${mm}月${dd}日（${FISCAL_YEAR}年度 ${MONTHS[FISCAL_IDX]}）`;
+  document.getElementById("todayBadge").textContent=`${FISCAL_YEAR}年度 ${MONTHS[FISCAL_IDX]}`;
 }
 
 /* ═══ セクション ═══ */
@@ -1019,6 +1064,20 @@ function toggleLeaveTrend(){
   document.getElementById('leaveTrendChevron')?.classList.toggle('open',leaveTrendOpen);
   if(leaveTrendOpen) renderLeaveTrendChart(); // 展開時のみ描画
 }
+/* ═══ ② モバイル: 残業・有休KPIの開閉（デフォルト非表示） ═══ */
+let kpiPanelOpen=false;
+function toggleKpiPanel(){
+  kpiPanelOpen=!kpiPanelOpen;
+  document.getElementById('kpiGrid')?.classList.toggle('mobile-open',kpiPanelOpen);
+  document.getElementById('kpiChevron')?.classList.toggle('open',kpiPanelOpen);
+}
+/* ═══ ③ モバイル: 残業削減サマリーの開閉（デフォルト非表示） ═══ */
+let summaryPanelOpen=false;
+function toggleSummaryPanel(){
+  summaryPanelOpen=!summaryPanelOpen;
+  document.getElementById('summaryCard')?.classList.toggle('mobile-open',summaryPanelOpen);
+  document.getElementById('summaryChevron')?.classList.toggle('open',summaryPanelOpen);
+}
 /* ═══ アラート確認済み管理 ═══ */
 const DISMISSED_KEY = 'kankyoka_dismissed_alerts';
 function getDismissed(){ try{ return JSON.parse(localStorage.getItem(DISMISSED_KEY)||'[]'); }catch(e){ return []; } }
@@ -1095,29 +1154,34 @@ function setYear(y){
   selYear=y; renderYearBtns(); renderOTLegend(); renderOTChart();
   renderProgress(); renderSummaryTable(); renderKPI();
 }
+/* ① 目標値の推移をタップで表示/非表示 */
+function toggleOTTarget(){
+  otTargetVisible=!otTargetVisible;
+  renderOTLegend(); renderOTChart();
+}
 
 /* ═══ OTグラフ（③ 詳細ツールチップ付き） ═══ */
 function renderOTLegend(){
   const yc=getYC();
   document.getElementById("otCardSub").textContent=`2025年度実績 vs ${selYear}年度目標（${yc.reduction}%削減）`;
-  const lc=['#7F77DD','#E58B28','#E06B6B'];
   document.getElementById("otLegend").innerHTML=`
-    <div class="legend-item"><span class="legend-line" style="background:#185FA5"></span>2025実績</div>
-    <div class="legend-item"><span class="legend-dash" style="border-color:${yc.color}"></span>${selYear}目標</div>
-    ${KEYS.map((k,i)=>`<div class="legend-item"><span class="legend-line" style="background:${lc[i]}"></span>${k}実績</div>`).join('')}
+    <div class="legend-item"><span class="legend-dash" style="border-color:${OT25_COLOR};border-top-width:1.25px"></span>2025実績</div>
+    <div class="legend-item" onclick="toggleOTTarget()" title="タップで表示/非表示" style="cursor:pointer;${otTargetVisible?'':'opacity:.5'}">
+      <span class="legend-dash" style="border-color:${yc.color}"></span>${selYear}目標${otTargetVisible?'':'（タップで表示）'}
+    </div>
+    ${KEYS.map((k)=>`<div class="legend-item"${k===CUR_FISCAL_KEY?' style="font-weight:700"':''}><span class="legend-line" style="background:${OT_LINE_COLORS[k]}"></span>${k}実績${k===CUR_FISCAL_KEY?'（今年度）':''}</div>`).join('')}
     <div class="legend-item"><span class="legend-sq" style="background:#fef08a;border:1px solid #EAB308"></span>当月</div>`;
 }
 function buildOTChartConfig(yc){
   const tickColors=MONTHS.map((_,i)=>i===FISCAL_IDX?"#EAB308":"#64748b");
-  const lc=['#7F77DD','#E58B28','#E06B6B'];
   return {
     type:"line",
     data:{
       labels:MONTHS,
       datasets:[
-        {label:"2025年度実績",data:OT25,borderColor:"#185FA5",backgroundColor:"transparent",borderWidth:2.5,pointRadius:3,pointBackgroundColor:"#185FA5",spanGaps:false},
-        {label:yc.label,data:yc.tgt,borderColor:yc.color,backgroundColor:"transparent",borderWidth:2,borderDash:[6,4],pointRadius:3,pointBackgroundColor:yc.color,spanGaps:false},
-        ...KEYS.map((k,ki)=>({label:k+"年度実績",data:actualData[k],borderColor:lc[ki],backgroundColor:"transparent",borderWidth:2,pointRadius:3,pointBackgroundColor:lc[ki],spanGaps:false}))
+        {label:"2025年度実績",data:OT25,borderColor:OT25_COLOR,backgroundColor:"transparent",borderWidth:1.25,borderDash:[6,4],pointRadius:1.5,pointBackgroundColor:OT25_COLOR,spanGaps:false},
+        {label:yc.label,data:yc.tgt,borderColor:yc.color,backgroundColor:"transparent",borderWidth:2,borderDash:[6,4],pointRadius:3,pointBackgroundColor:yc.color,spanGaps:false,hidden:!otTargetVisible},
+        ...KEYS.map((k)=>({label:k+"年度実績",data:actualData[k],borderColor:OT_LINE_COLORS[k],backgroundColor:"transparent",borderWidth:k===CUR_FISCAL_KEY?3:2,pointRadius:k===CUR_FISCAL_KEY?4:3,pointBackgroundColor:OT_LINE_COLORS[k],spanGaps:false}))
       ]
     },
     options:{
@@ -1460,7 +1524,7 @@ function renderInputTable(){
       </td>
       <td>${grpSel}</td>
       <td><input class="num-input" type="number" min="1" max="40" value="${m.days}" onchange="updateDays(${m.idx},this.value)"> 日</td>
-      <td><select class="num-input" style="width:66px" onchange="updateTakenDirect(${m.idx},this.value)">${Array.from({length:m.days+1},(_,i)=>`<option value="${i}"${i===m.taken?" selected":""}>${i}日</option>`).join("")}</select></td>
+      <td><select class="num-input" style="width:72px" onchange="updateTakenDirect(${m.idx},this.value)">${Array.from({length:m.days*2+1},(_,i)=>{const v=i/2;return `<option value="${v}"${v===m.taken?" selected":""}>${v}日</option>`;}).join("")}</select></td>
       <td class="col-sp-hide" style="text-align:left;padding-left:10px">
         <span class="achv-bar-bg"><span class="achv-bar-fill" style="width:${a}%;background:${bc}"></span></span>
         <span class="achv-pct" style="color:${bc}">${a}%</span>
@@ -1471,7 +1535,7 @@ function renderInputTable(){
     </tr>`;
     if(isExp){
       const cells=MONTHS.map((mo,mi)=>`<div class="month-cell"><label>${mo}</label>
-        <input type="number" min="0" max="${m.days}" value="${m.takenMonths[mi]||0}" onchange="updateMonthly(${m.idx},${mi},this.value)">
+        <input type="number" min="0" max="${m.days}" step="0.5" value="${m.takenMonths[mi]||0}" onchange="updateMonthly(${m.idx},${mi},this.value)">
       </div>`).join('');
       html+=`<tr class="month-expand-row"><td colspan="100">
         <div class="month-grid">${cells}
@@ -1486,7 +1550,8 @@ function updateGroup(idx,val){
 }
 function toggleMonthly(idx){ expandedRow=expandedRow===idx?-1:idx; renderInputTable(); }
 function updateMonthly(idx,mi,val){
-  const v=Math.max(0,parseInt(val)||0);
+  let v=Math.max(0,parseFloat(val)||0);
+  v=Math.round(v*2)/2; // 0.5日刻みに丸める（半休対応）
   members[idx].takenMonths[mi]=Math.min(v,members[idx].days);
   const total=sumArr(members[idx].takenMonths);
   if(total>members[idx].days)
@@ -1505,7 +1570,8 @@ function updateDays(idx,val){
 
 // 取得数を合計値で直接入力したとき
 function updateTakenDirect(idx, val) {
-  const newTotal = Math.min(Math.max(0, parseInt(val)||0), members[idx].days);
+  let newTotal = Math.min(Math.max(0, parseFloat(val)||0), members[idx].days);
+  newTotal = Math.round(newTotal*2)/2; // 0.5日刻みに丸める（半休対応）
   const oldTotal = mTaken(members[idx]);
 
   if (newTotal === 0) {
@@ -1516,14 +1582,14 @@ function updateTakenDirect(idx, val) {
     members[idx].takenMonths = new Array(12).fill(0);
     members[idx].takenMonths[FISCAL_IDX] = newTotal;
   } else {
-    // 既存の月別データを新しい合計に比例配分
+    // 既存の月別データを新しい合計に比例配分（0.5日刻みに丸める）
     const scale = newTotal / oldTotal;
-    let months = members[idx].takenMonths.map(v => Math.round(v * scale));
-    // 端数調整：最大値の月に差分を吸収
-    const diff = newTotal - sumArr(months);
+    let months = members[idx].takenMonths.map(v => Math.round(v * scale * 2) / 2);
+    // 端数調整：最大値の月に差分を吸収（差分も0.5刻みに丸める）
+    const diff = Math.round((newTotal - sumArr(months)) * 2) / 2;
     if (diff !== 0) {
       const maxI = months.indexOf(Math.max(...months));
-      months[maxI] = Math.max(0, months[maxI] + diff);
+      months[maxI] = Math.max(0, Math.round((months[maxI] + diff) * 2) / 2);
     }
     members[idx].takenMonths = months.map(v => Math.min(v, members[idx].days));
   }
@@ -1749,10 +1815,18 @@ let salesInputYear  = DEFAULT_YEAR; // 入力タブ年度
 let salesChartInst  = null;
 
 /* ── 売上KPI ── */
+/* ── 売上データが入力されている直近月のインデックスを取得（未入力ならFISCAL_IDXにフォールバック） ── */
+function latestSalesMonthIdx(yr){
+  const sd = salesData[yr] || {};
+  const u2 = sd.unit2 || [], u3 = sd.unit3 || [];
+  let idx = -1;
+  for(let i=0;i<12;i++){ if(u2[i]!=null || u3[i]!=null) idx = i; }
+  return idx>=0 ? idx : FISCAL_IDX;
+}
 function renderSalesKPI(){
   const yr  = selSalesYear;
   const py  = String(parseInt(yr)-1);
-  const mi  = FISCAL_IDX;
+  const mi  = latestSalesMonthIdx(yr);
   const u2c = salesData[yr]?.unit2?.[mi] ?? null;
   const u3c = salesData[yr]?.unit3?.[mi] ?? null;
   const u2p = salesData[py]?.unit2?.[mi] ?? null;
@@ -1767,11 +1841,11 @@ function renderSalesKPI(){
   const u2sum = sumArr(salesData[yr]?.unit2?.filter(v=>v!==null)||[]);
   const u3sum = sumArr(salesData[yr]?.unit3?.filter(v=>v!==null)||[]);
   document.getElementById('salesKpiGrid').innerHTML=[
-    {label:`ユニット2 当月（${MONTHS[mi]}）`,val:fmtOkuVal(u2c),unit:fmtOkuUnit(u2c),
+    {label:`ユニット2 直近月（${MONTHS[mi]}）`,val:fmtOkuVal(u2c),unit:fmtOkuUnit(u2c),
      sub:`${yr}年度累計: ${u2sum>0?fmtOku(u2sum):'—'}`,color:U2_COLOR,trend:yoyBadge(u2c,u2p)},
-    {label:`ユニット3 当月（${MONTHS[mi]}）`,val:fmtOkuVal(u3c),unit:fmtOkuUnit(u3c),
+    {label:`ユニット3 直近月（${MONTHS[mi]}）`,val:fmtOkuVal(u3c),unit:fmtOkuUnit(u3c),
      sub:`${yr}年度累計: ${u3sum>0?fmtOku(u3sum):'—'}`,color:U3_COLOR,trend:yoyBadge(u3c,u3p)},
-    {label:`合算 当月（${MONTHS[mi]}）`,
+    {label:`合算 直近月（${MONTHS[mi]}）`,
      val:fmtOkuVal(u2c!=null&&u3c!=null?u2c+u3c:null),unit:fmtOkuUnit(u2c!=null&&u3c!=null?u2c+u3c:null),
      sub:`${yr}年度累計: ${(u2sum+u3sum)>0?fmtOku(u2sum+u3sum):'—'}`,color:TOT_COLOR,
      trend:yoyBadge(u2c!=null&&u3c!=null?u2c+u3c:null,u2p!=null&&u3p!=null?u2p+u3p:null)},
