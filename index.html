@@ -1332,8 +1332,8 @@ function renderMemberChart(){
     const ew=(Math.max(0,maxDays-m.days)/maxDays*100).toFixed(4);
     const bc=barColor(m.achv);
     const gc=grpColor(m.group);
-    // バー右端ラベル（取得バーの直後に数字）／ 0.5刻みが分かるよう常に小数第1位で表示
-    const takenLbl=f(m.taken,1);
+    // バー右端ラベル（取得バーの直後に数字）／ 整数はそのまま、0.5刻みの値は小数のまま表示
+    const takenLbl=m.taken;
     const barLabel=m.taken>0
       ?`<span class="cbar-bar-lbl" style="left:${tw}%;transform:translateY(-50%);color:${bc};font-size:9px;font-weight:700;padding-left:3px">${takenLbl}</span>`
       :'';
