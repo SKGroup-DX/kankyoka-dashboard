@@ -161,19 +161,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .achv-bar-bg{background:#f1f5f9;border-radius:10px;height:6px;width:58px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:3px}
 .achv-bar-fill{height:6px;border-radius:10px;transition:width .3s}
 .achv-pct{font-size:10px;font-weight:700}
-.add-form{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px 12px;background:#f8fafc;border-radius:7px;border:1.5px dashed #cbd5e1;margin-top:8px}
-.add-form label{font-size:10px;color:#64748b;font-weight:600}
-.add-form input[type=text]{padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;width:82px}
-.add-form input[type=number]{padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;width:58px}
-.add-form input:focus{outline:none;border-color:#185FA5}
-.drag-handle{cursor:grab;color:#94a3b8;font-size:15px;padding:0 2px;user-select:none}
-.drag-handle:active{cursor:grabbing;color:#64748b}
-tr.drag-over > td{background:#eff6ff !important;outline:2px solid #185FA5;outline-offset:-1px}
-tr.dragging{opacity:.35}
-.move-btn{background:none;border:1px solid #e2e8f0;border-radius:3px;cursor:pointer;font-size:9px;padding:1px 4px;color:#64748b;line-height:1.2}
-.move-btn:hover:not(:disabled){background:#f1f5f9;color:#0f172a}
-.move-btn:disabled{opacity:.3;cursor:default}
-.move-cell{display:inline-flex;flex-direction:column;gap:1px;vertical-align:middle;margin-right:4px}
 .month-expand-row td{background:#f8fafc !important;padding:8px 12px !important}
 .month-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .month-cell{display:flex;flex-direction:column;gap:2px;align-items:center}
@@ -182,16 +169,6 @@ tr.dragging{opacity:.35}
 .month-cell input:focus{outline:none;border-color:#185FA5}
 .month-total{font-size:11px;color:#475569;padding:6px 0 2px;grid-column:1/-1;text-align:right}
 
-/* ── ⑤ Group management ── */
-.group-mgr{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:10px}
-.group-mgr-title{font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px}
-.group-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.group-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid transparent;cursor:default}
-.group-chip button{background:none;border:none;cursor:pointer;font-size:10px;color:inherit;opacity:.6;padding:0 0 0 2px}
-.group-chip button:hover{opacity:1}
-.group-add-row{display:flex;gap:6px;align-items:center}
-.group-add-row input{padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;background:#fff;color:#1e293b;width:100px}
-.group-add-row input:focus{outline:none;border-color:#185FA5}
 
 /* ── ② KPIセクションラベル ── */
 .kpi-section-lbl{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:0 2px;margin-bottom:-4px}
@@ -567,28 +544,17 @@ tr.dragging{opacity:.35}
       </div>
     </div>
 
-    <!-- ⑤ グループ管理 -->
-    <div class="card">
-      <div class="card-title" style="margin-bottom:8px">⑤ グループ管理</div>
-      <div class="group-mgr">
-        <div class="group-mgr-title">グループ一覧（メンバーに割り当て可能）</div>
-        <div class="group-list" id="groupList"></div>
-        <div class="group-add-row">
-          <input type="text" id="newGroupName" placeholder="新しいグループ名" maxlength="12">
-          <button class="btn btn-primary btn-sm" onclick="addGroup()">＋ 追加</button>
-        </div>
-      </div>
-    </div>
-
     <!-- メンバー管理 -->
     <div class="card">
       <div class="input-card-head">
         <div>
           <div class="card-title">② メンバー有休 管理</div>
-          <div style="font-size:10px;color:#64748b;margin-top:1px">「名前順」で ⠿ ドラッグ or ↑↓ 並べ替え可。「月別」で月ごと入力可。</div>
+          <div style="font-size:10px;color:#64748b;margin-top:1px">
+            氏名・グループ・付与日数はスプレッドシート「メンバー設定」シートで編集してください（自動で同期されます）。ここでは月別の取得日数のみ入力できます。
+          </div>
         </div>
         <select id="inputSortSel" onchange="renderInputTable()">
-          <option value="name">名前順（並べ替え可 ↕）</option>
+          <option value="name">名前順</option>
           <option value="achv_asc">取得率 低い順</option>
           <option value="achv_desc">取得率 高い順</option>
           <option value="taken_desc">取得数 多い順</option>
@@ -597,19 +563,13 @@ tr.dragging{opacity:.35}
       <div class="member-wrap">
         <table class="member-table" id="memberInputTable">
           <thead id="memberThead"><tr>
-            <th style="width:26px"></th>
             <th style="text-align:left;min-width:56px">氏名</th>
             <th>グループ</th><th>付与数</th><th>取得数</th>
             <th class="col-sp-hide" style="min-width:120px">取得率</th>
-            <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th><th style="width:50px"></th>
+            <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th>
           </tr></thead>
           <tbody id="memberTbody"></tbody>
         </table>
-      </div>
-      <div class="add-form">
-        <label>氏名</label><input type="text" id="newName" placeholder="例: 山田" maxlength="10">
-        <label>付与日数</label><input type="number" id="newDays" min="1" max="40" value="20">
-        <button class="btn btn-primary" onclick="addMember()">＋ 追加</button>
       </div>
     </div>
 
@@ -622,7 +582,7 @@ tr.dragging{opacity:.35}
       </div>
       <div id="dataMgrBody" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #fde68a">
         <p style="font-size:11px;color:#64748b;margin-bottom:10px">
-          すべての入力データ（残業実績・有休取得・グループ）を初期状態に戻します。<br>
+          残業実績・有休取得日数・売上実績の入力データを初期状態に戻します（氏名・グループ・付与日数はスプレッドシート管理のため保持されます）。<br>
           <strong style="color:#92400e">この操作は元に戻せません。</strong>
         </p>
         <button class="btn btn-danger" onclick="confirmReset()">🗑 全データをリセット</button>
@@ -632,17 +592,6 @@ tr.dragging{opacity:.35}
 </div>
 
 <!-- Modals -->
-<div class="modal-bg" id="deleteModal">
-  <div class="modal">
-    <h3>メンバーを削除</h3>
-    <p style="font-size:12px;color:#475569;margin-bottom:4px"><strong id="deleteTargetName"></strong> を削除しますか？</p>
-    <p style="font-size:10px;color:#94a3b8">この操作は元に戻せません。</p>
-    <div class="modal-btns">
-      <button class="btn" onclick="closeModal()">キャンセル</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">削除する</button>
-    </div>
-  </div>
-</div>
 <div class="modal-bg" id="settingsModal">
   <div class="modal" style="width:380px">
     <h3>⚙️ スプレッドシート連携設定</h3>
@@ -872,6 +821,40 @@ function applyData(d){
   }
 }
 
+/* ═══ ⑨ メンバー設定（氏名・グループ・付与日数）をスプレッドシートから取得・反映 ═══ */
+// スプレッドシートの「メンバー設定」シートを取得（未設定/失敗時はnull）
+async function loadRoster(){
+  if(!gasUrl) return null;
+  try{
+    const res = await fetch(gasUrl+'?action=get_roster&t='+Date.now(),{redirect:'follow'});
+    const d = await res.json();
+    if(d.error || !Array.isArray(d.roster)) return null;
+    return d.roster; // [{name, group, days}, ...]
+  }catch(e){ return null; }
+}
+// 取得したロースター（氏名・グループ・付与日数）を members/groups に反映
+// ・氏名は一致するメンバーの取得月別データ(takenMonths)を引き継ぐ
+// ・シートにない氏名は削除、シートにしかない新しい氏名は新規追加（取得0からスタート）
+// ・グループ一覧はロースターのグループ列から自動抽出（重複除去・出現順）
+function applyRoster(roster){
+  if(!roster || !roster.length) return;
+  const byName = new Map(members.map(m=>[m.name,m]));
+  members = roster.map(r=>{
+    const existing = byName.get(r.name);
+    return {
+      name: r.name,
+      group: r.group || '',
+      days: r.days>0 ? r.days : 20,
+      takenMonths: existing ? existing.takenMonths : new Array(12).fill(0)
+    };
+  });
+  const seen=new Set(); groups=[];
+  roster.forEach(r=>{
+    const g=(r.group||'').trim();
+    if(g && !seen.has(g)){ seen.add(g); groups.push(g); }
+  });
+}
+
 // 初期読込（GAS優先 → localStorage fallback）
 async function loadData(){
   gasUrl=localStorage.getItem(GAS_KEY) || DEFAULT_GAS_URL;
@@ -901,7 +884,8 @@ async function loadData(){
 
 function doReset(){
   actualData=mkInitActual(); salesData=mkInitSales(); salesTargets=mkInitTargets();
-  members=INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]})); groups=[];
+  // 氏名・グループ・付与日数はスプレッドシート「メンバー設定」で管理しているため保持し、取得月別データのみ初期化
+  members=members.map(m=>({...m,takenMonths:new Array(12).fill(0)}));
   saveData(); closeModal(); renderAll();
 }
 function confirmReset(){ document.getElementById("resetModal").classList.add("open"); }
@@ -942,7 +926,7 @@ const DEFAULT_YEAR = KEYS.includes(String(FISCAL_YEAR))?String(FISCAL_YEAR):KEYS
 let selYear    = DEFAULT_YEAR;
 let inputYear  = DEFAULT_YEAR;
 let otChartInst=null, leaveTrendInst=null, leaveRateInst=null;
-let deleteTarget=-1, expandedRow=-1, dragSrcIdx=null, alertOpen=false, leaveTrendOpen=false;
+let expandedRow=-1, alertOpen=false, leaveTrendOpen=false;
 let otTargetVisible=false; // ① 目標値の推移はデフォルト非表示（タップで表示）
 
 /* ═══ ユーティリティ ═══ */
@@ -971,7 +955,7 @@ function switchSection(id,btn){
   if(id==="input"){
     syncInputYearTab();
     syncSalesInputYearTab(); // 売上タブも当年度に自動選択
-    renderGroupUI(); renderOTInputGrid(); renderInputTable(); renderSalesInputGrid();
+    updateGroupSelects(); renderOTInputGrid(); renderInputTable(); renderSalesInputGrid();
   }
 }
 /* ⑦ 入力タブの年度ボタンを当年度に合わせる */
@@ -1316,33 +1300,6 @@ function updateGroupSelects(){
     if(groups.includes(cur)) el.value=cur;
   });
 }
-function renderGroupUI(){
-  updateGroupSelects();
-  const el=document.getElementById("groupList"); if(!el) return;
-  el.innerHTML=groups.length===0?'<span style="font-size:11px;color:#94a3b8">グループがありません。追加してください。</span>'
-    :groups.map((g,i)=>{
-      const c=GRP_COLORS[i%GRP_COLORS.length];
-      return `<span class="grp-badge group-chip" style="background:${c.bg};color:${c.text};border-color:${c.bg}">${g}
-        <button onclick="deleteGroup('${g}')" title="削除">×</button>
-      </span>`;
-    }).join('');
-}
-function addGroup(){
-  const name=document.getElementById("newGroupName").value.trim();
-  if(!name){ alert("グループ名を入力してください"); return; }
-  if(groups.includes(name)){ alert("同じ名前が既に存在します"); return; }
-  groups.push(name); document.getElementById("newGroupName").value="";
-  saveData(); renderGroupUI(); updateGroupSelects(); renderInputTable();
-  if(window.innerWidth>760) renderLeaveTrendEmbed();
-}
-function deleteGroup(name){
-  if(!confirm(`「${name}」を削除しますか？\n（このグループを設定しているメンバーは未設定になります）`)) return;
-  groups=groups.filter(g=>g!==name);
-  members.forEach(m=>{ if(m.group===name) m.group=""; });
-  saveData(); renderGroupUI(); updateGroupSelects(); renderInputTable(); refreshMember();
-  if(window.innerWidth>760) renderLeaveTrendEmbed();
-}
-
 /* ═══ CSS棒グラフ（有休） ═══ */
 function getDisplayMembers(){
   const filt=document.getElementById("memberFilterSel").value;
@@ -1488,42 +1445,25 @@ function clearActualYear(){
 /* ═══ メンバー管理テーブル（⑤ グループ列付き） ═══ */
 function renderInputTable(){
   const srt=document.getElementById("inputSortSel").value;
-  const isManual=srt==="name";
   document.getElementById("memberThead").innerHTML=`<tr>
-    ${isManual?'<th style="width:26px"></th>':''}
     <th style="text-align:left;min-width:60px">氏名</th>
     <th>グループ</th><th>付与数</th><th>取得数</th>
     <th class="col-sp-hide" style="min-width:120px">取得率</th>
-    <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th><th style="width:50px"></th>
+    <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th>
   </tr>`;
   let d=members.map((m,i)=>({...m,idx:i,taken:mTaken(m),achv:achvPct(mTaken(m),m.days)}));
   if(srt==="achv_asc")   d.sort((a,b)=>a.achv-b.achv);
   else if(srt==="achv_desc")  d.sort((a,b)=>b.achv-a.achv);
   else if(srt==="taken_desc") d.sort((a,b)=>b.taken-a.taken);
   let html='';
-  d.forEach((m,di)=>{
+  d.forEach((m)=>{
     const a=m.achv,bc=barColor(a),rem=Math.max(0,m.days-m.taken);
-    const isExp=expandedRow===m.idx,isF=di===0,isL=di===d.length-1;
+    const isExp=expandedRow===m.idx;
     const gc=grpColor(m.group);
-    const dragA=isManual?`draggable="true" data-idx="${m.idx}"
-      ondragstart="onDragStart(event,${m.idx})" ondragover="onDragOver(event,${m.idx})"
-      ondrop="onDrop(event,${m.idx})" ondragend="onDragEnd()"` :'';
-    // グループ選択セル
-    const grpSel=`<select style="font-size:10px;padding:2px 18px 2px 5px;border-radius:5px" onchange="updateGroup(${m.idx},this.value)">
-      <option value="" ${!m.group?"selected":""}>未設定</option>
-      ${groups.map(g=>`<option value="${g}" ${m.group===g?"selected":""}>${g}</option>`).join('')}
-    </select>`;
-    html+=`<tr ${dragA}>
-      ${isManual?`<td style="text-align:center"><span class="drag-handle">⠿</span></td>`:''}
-      <td>
-        ${isManual?`<span class="move-cell">
-          <button class="move-btn" onclick="moveMember(${m.idx},-1)" ${isF?"disabled":""}>▲</button>
-          <button class="move-btn" onclick="moveMember(${m.idx},+1)" ${isL?"disabled":""}>▼</button>
-        </span>`:''}${m.name}
-        ${m.group?`<span class="grp-badge" style="background:${gc.bg};color:${gc.text}">${m.group}</span>`:''}
-      </td>
-      <td>${grpSel}</td>
-      <td><input class="num-input" type="number" min="1" max="40" value="${m.days}" onchange="updateDays(${m.idx},this.value)"> 日</td>
+    html+=`<tr>
+      <td>${m.name}</td>
+      <td>${m.group?`<span class="grp-badge" style="background:${gc.bg};color:${gc.text}">${m.group}</span>`:'<span style="font-size:10px;color:#94a3b8">未設定</span>'}</td>
+      <td style="color:#64748b;font-weight:600">${m.days}日</td>
       <td><select class="num-input" style="width:72px" onchange="updateTakenDirect(${m.idx},this.value)">${Array.from({length:m.days*2+1},(_,i)=>{const v=i/2;return `<option value="${v}"${v===m.taken?" selected":""}>${v}日</option>`;}).join("")}</select></td>
       <td class="col-sp-hide" style="text-align:left;padding-left:10px">
         <span class="achv-bar-bg"><span class="achv-bar-fill" style="width:${a}%;background:${bc}"></span></span>
@@ -1531,7 +1471,6 @@ function renderInputTable(){
       </td>
       <td class="col-sp-hide" style="font-weight:700;color:${rem===0?"#085041":"#64748b"}">${rem} 日</td>
       <td><button class="btn btn-sm${isExp?" btn-primary":""}" onclick="toggleMonthly(${m.idx})">${isExp?"▲":"月別"}</button></td>
-      <td><button class="btn btn-danger btn-sm" onclick="openDelete(${m.idx})">削除</button></td>
     </tr>`;
     if(isExp){
       const cells=MONTHS.map((mo,mi)=>`<div class="month-cell"><label>${mo}</label>
@@ -1545,9 +1484,6 @@ function renderInputTable(){
   });
   document.getElementById("memberTbody").innerHTML=html;
 }
-function updateGroup(idx,val){
-  members[idx].group=val; saveData(); refreshMember(); renderInputTable();
-}
 function toggleMonthly(idx){ expandedRow=expandedRow===idx?-1:idx; renderInputTable(); }
 function updateMonthly(idx,mi,val){
   let v=Math.max(0,parseFloat(val)||0);
@@ -1558,16 +1494,6 @@ function updateMonthly(idx,mi,val){
     members[idx].takenMonths[mi]=Math.max(0,members[idx].takenMonths[mi]-(total-members[idx].days));
   saveData(); refreshMember(); renderInputTable();
 }
-function updateDays(idx,val){
-  members[idx].days=Math.max(1,parseInt(val)||1);
-  const total=sumArr(members[idx].takenMonths);
-  if(total>members[idx].days){
-    const scale=members[idx].days/total;
-    members[idx].takenMonths=members[idx].takenMonths.map(v=>Math.floor(v*scale));
-  }
-  saveData(); refreshMember(); renderInputTable();
-}
-
 // 取得数を合計値で直接入力したとき
 function updateTakenDirect(idx, val) {
   let newTotal = Math.min(Math.max(0, parseFloat(val)||0), members[idx].days);
@@ -1595,42 +1521,6 @@ function updateTakenDirect(idx, val) {
   }
   saveData(); refreshMember(); renderInputTable();
 }
-function addMember(){
-  const name=document.getElementById("newName").value.trim();
-  const days=Math.max(1,parseInt(document.getElementById("newDays").value)||20);
-  if(!name){alert("氏名を入力してください");return;}
-  if(members.find(m=>m.name===name)){alert("同じ名前が既に存在します");return;}
-  members.push({name,days,takenMonths:new Array(12).fill(0),group:""});
-  document.getElementById("newName").value=""; document.getElementById("newDays").value="20";
-  saveData(); refreshMember(); renderInputTable();
-}
-function moveMember(idx,dir){
-  const ni=idx+dir; if(ni<0||ni>=members.length) return;
-  [members[idx],members[ni]]=[members[ni],members[idx]];
-  saveData(); refreshMember(); renderInputTable();
-}
-function onDragStart(e,idx){
-  dragSrcIdx=idx; e.dataTransfer.effectAllowed='move';
-  setTimeout(()=>{const r=document.querySelector(`#memberTbody tr[data-idx="${idx}"]`);if(r)r.classList.add('dragging');},0);
-}
-function onDragOver(e,idx){
-  e.preventDefault(); e.dataTransfer.dropEffect='move';
-  document.querySelectorAll('#memberTbody tr.drag-over').forEach(r=>r.classList.remove('drag-over'));
-  if(idx!==dragSrcIdx){const r=document.querySelector(`#memberTbody tr[data-idx="${idx}"]`);if(r)r.classList.add('drag-over');}
-}
-function onDrop(e,idx){
-  e.preventDefault();
-  if(dragSrcIdx===null||dragSrcIdx===idx){dragSrcIdx=null;return;}
-  const[moved]=members.splice(dragSrcIdx,1);
-  members.splice(idx>dragSrcIdx?idx-1:idx,0,moved);
-  dragSrcIdx=null; saveData(); refreshMember(); renderInputTable();
-}
-function onDragEnd(){
-  dragSrcIdx=null;
-  document.querySelectorAll('#memberTbody tr').forEach(r=>r.classList.remove('dragging','drag-over'));
-}
-function openDelete(idx){ deleteTarget=idx; document.getElementById("deleteTargetName").textContent=members[idx].name; document.getElementById("deleteModal").classList.add("open"); }
-function confirmDelete(){ if(deleteTarget>=0){members.splice(deleteTarget,1);deleteTarget=-1;} expandedRow=-1; closeModal(); saveData(); refreshMember(); renderInputTable(); }
 /* ═══ 管理者認証 ═══ */
 /* ═══ ① 管理者認証（SHA-256ハッシュ＋GAS照合） ═══ */
 // SHA-256('3150') — ソースコードにパスワード平文を書かない
@@ -2175,6 +2065,8 @@ function renderAll(){
 }
 async function init(){
   await loadData();  // GAS/localStorageから読込（非同期）
+  const roster = await loadRoster(); // ⑨ スプレッドシート「メンバー設定」から氏名・グループ・付与日数を取得
+  if(roster) applyRoster(roster);
   renderAll();
 }
 init();
