@@ -88,14 +88,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu
 .prog-bar-fill{height:4px;border-radius:3px}
 .prog-note{font-size:9px;color:#94a3b8;margin-top:2px}
 
-/* ── ④ 有休推移グラフ ── */
-.leave-trend-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-/* 棒グラフ(2fr) + 折れ線(1fr) の2列。モバイルでは縦積みに切り替え */
-.leave-charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
-/* PC: otCard内埋め込みを表示、独立カードは非表示 */
-.ot-leave-embed{display:block}
-#leaveTrendCard{display:none}
-
 /* ── Summary table ── */
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 table.stbl{width:100%;font-size:11px;border-collapse:collapse;min-width:480px}
@@ -161,13 +153,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .achv-bar-bg{background:#f1f5f9;border-radius:10px;height:6px;width:58px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:3px}
 .achv-bar-fill{height:6px;border-radius:10px;transition:width .3s}
 .achv-pct{font-size:10px;font-weight:700}
-.month-expand-row td{background:#f8fafc !important;padding:8px 12px !important}
-.month-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-.month-cell{display:flex;flex-direction:column;gap:2px;align-items:center}
-.month-cell label{font-size:9px;font-weight:600;color:#64748b}
-.month-cell input{width:48px;text-align:center;border:1px solid #e2e8f0;border-radius:5px;padding:3px 2px;font-size:11px;color:#1e293b;background:#fff}
-.month-cell input:focus{outline:none;border-color:#185FA5}
-.month-total{font-size:11px;color:#475569;padding:6px 0 2px;grid-column:1/-1;text-align:right}
 
 
 /* ── ② KPIセクションラベル ── */
@@ -243,9 +228,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   #topRow{display:contents}
   #otCard{grid-area:ot}
   #summaryCard{grid-area:summary}
-  /* 印刷ではotCard内の埋め込みグラフを表示（独立カードは非表示のまま） */
-  .ot-leave-embed{display:block !important}
-  #leaveTrendCard{display:none !important}
   #memberCard{grid-area:member}
   .kpi{padding:6px 9px;border-radius:5px}
   .kpi-label{font-size:8px;margin-bottom:2px}.kpi-val{font-size:17px}.kpi-unit{font-size:10px}
@@ -255,9 +237,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   .legend{gap:7px;margin-bottom:5px}.legend-item{font-size:8px;gap:3px}
   .legend-sq{width:7px;height:7px}.legend-line{width:14px;height:2px}.legend-dash{width:14px}
   #otCard .chart-wrap{height:140px !important}
-  #leaveTrendBody{display:block !important}
-  #leaveTrendChevron{display:none}
-  #leaveTrendCard .chart-wrap{height:120px !important}
   .prog-grid{display:none !important}
   .tbl-wrap{overflow:visible}
   table.stbl thead th{font-size:8px;padding:3px 4px}
@@ -276,15 +255,10 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 }
 @media(max-width:760px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
-  #topRow{grid-template-columns:1fr}.leave-trend-row{grid-template-columns:1fr}
-  .leave-charts-grid{grid-template-columns:1fr}
-  .leave-charts-grid .chart-wrap{height:160px !important}
+  #topRow{grid-template-columns:1fr}
   .ot-grid{grid-template-columns:repeat(4,1fr)}
   .main{padding:10px 10px 32px}
   .col-sp-hide{display:none}
-  /* モバイル: 埋め込みを非表示、独立カード（折りたたみ）を表示 */
-  .ot-leave-embed{display:none !important}
-  #leaveTrendCard{display:block !important}
   /* モバイル: アラート・GAS未設定バナーを非表示 */
   #gasWarningBanner{display:none !important}
   #alertPanel{display:none !important}
@@ -321,9 +295,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   #summaryCard.mobile-open{display:block}
   /* モバイル: 年度目標進捗バーも非表示 */
   .prog-grid{display:none !important}
-  /* モバイル: 有休月次推移カードも非表示 */
-  #leaveTrendCard{display:none !important}
-  .ot-leave-embed{display:none !important}
 }
 </style>
 </head>
@@ -386,19 +357,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
         <div class="legend" id="otLegend"></div>
         <div class="chart-wrap" style="height:210px"><canvas id="otChart"></canvas></div>
         <div class="prog-grid" id="progGrid"></div>
-        <!-- PC時: 月次推移を左下に埋め込み表示（モバイルでは非表示） -->
-        <div id="otCardLeaveEmbed" class="ot-leave-embed">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding-top:10px;border-top:1px solid #f1f5f9">
-            <div style="font-size:11px;font-weight:700;color:#0f172a">有休取得 月次推移</div>
-            <select id="leaveTrendGroupSelEmbed" onchange="renderLeaveTrendEmbed()">
-              <option value="all">全グループ</option>
-            </select>
-          </div>
-          <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
-            <div class="chart-wrap" style="height:130px"><canvas id="leaveTrendChartEmbed"></canvas></div>
-            <div class="chart-wrap" style="height:130px"><canvas id="leaveRateChartEmbed"></canvas></div>
-          </div>
-        </div>
       </div>
 
       <!-- 有休グラフ -->
@@ -428,28 +386,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
           <div class="legend-item"><span class="legend-sq" style="background:#dde3eb"></span>残り付与数</div>
         </div>
         <div id="memberWrap"></div>
-      </div>
-    </div>
-
-    <!-- 有休取得 月次推移（折りたたみ） -->
-    <div id="leaveTrendCard" class="card" style="padding:0;overflow:hidden">
-      <div class="alert-header" onclick="toggleLeaveTrend()" style="padding:10px 16px">
-        <div class="alert-title" style="font-size:13px;font-weight:700;color:#0f172a">有休取得 月次推移</div>
-        <span id="leaveTrendChevron" class="alert-chevron">▼</span>
-      </div>
-      <div id="leaveTrendBody" class="alert-body">
-        <div style="padding:0 16px 14px">
-          <div style="font-size:10px;color:#64748b;margin-bottom:8px">チーム全体の月別取得数（棒）と累積取得率（折れ線）の推移</div>
-          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-            <select id="leaveTrendGroupSel" onchange="renderLeaveTrendChart()">
-              <option value="all">全グループ</option>
-            </select>
-          </div>
-          <div class="leave-charts-grid">
-            <div class="chart-wrap" style="height:180px"><canvas id="leaveTrendChart"></canvas></div>
-            <div class="chart-wrap" style="height:180px"><canvas id="leaveRateChart"></canvas></div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -550,7 +486,7 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
         <div>
           <div class="card-title">② メンバー有休 管理</div>
           <div style="font-size:10px;color:#64748b;margin-top:1px">
-            氏名・グループ・付与日数はスプレッドシート「メンバー設定」シートで編集してください（自動で同期されます）。同シートの「取得数」列は、新しい氏名（氏名変更を含む）が初めて同期された時だけ初期値として反映されます。ここでは月別の取得日数のみ入力できます。
+            氏名・グループ・付与日数・取得数は、すべてスプレッドシート「メンバー設定」シートで編集してください（自動で同期されます）。ここは閲覧専用です。
           </div>
         </div>
         <select id="inputSortSel" onchange="renderInputTable()">
@@ -566,7 +502,7 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
             <th style="text-align:left;min-width:56px">氏名</th>
             <th>グループ</th><th>付与数</th><th>取得数</th>
             <th class="col-sp-hide" style="min-width:120px">取得率</th>
-            <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th>
+            <th class="col-sp-hide">残日数</th>
           </tr></thead>
           <tbody id="memberTbody"></tbody>
         </table>
@@ -836,22 +772,15 @@ async function loadRoster(){
 // ・氏名は一致するメンバーの取得月別データ(takenMonths)を引き継ぐ
 // ・シートにない氏名は削除、シートにしかない新しい氏名は新規追加（取得0からスタート）
 // ・グループ一覧はロースターのグループ列から自動抽出（重複除去・出現順）
+// ⑨ メンバー設定シートの「取得数」（D列）＝ダッシュボードの取得数、が常に一致するように反映
+// （月別入力は廃止したため、内訳は保持せず毎回D列の値をそのまま採用する）
 function applyRoster(roster){
   if(!roster || !roster.length) return;
-  const byName = new Map(members.map(m=>[m.name,m]));
   members = roster.map(r=>{
-    const existing = byName.get(r.name);
     const days = r.days>0 ? r.days : 20;
-    let takenMonths;
-    if(existing){
-      // 既存メンバー：月別の取得実績をそのまま引き継ぐ（シートの「取得数」は参照しない）
-      takenMonths = existing.takenMonths;
-    }else{
-      // 新規（氏名変更で不一致になった場合を含む）：シートの「取得数」を初期値として当月にまとめて反映
-      const seed = Math.min(Math.round((Number(r.takenTotal)||0)*2)/2, days);
-      takenMonths = new Array(12).fill(0);
-      if(seed>0) takenMonths[FISCAL_IDX] = seed;
-    }
+    const total = Math.min(Math.max(0, Math.round((Number(r.takenTotal)||0)*2)/2), days);
+    const takenMonths = new Array(12).fill(0);
+    if(total>0) takenMonths[FISCAL_IDX] = total;
     return { name: r.name, group: r.group || '', days, takenMonths };
   });
   const seen=new Set(); groups=[];
@@ -931,8 +860,8 @@ async function testGasConnection(){
 const DEFAULT_YEAR = KEYS.includes(String(FISCAL_YEAR))?String(FISCAL_YEAR):KEYS.includes(String(FISCAL_YEAR-1))?String(FISCAL_YEAR-1):KEYS[0];
 let selYear    = DEFAULT_YEAR;
 let inputYear  = DEFAULT_YEAR;
-let otChartInst=null, leaveTrendInst=null, leaveRateInst=null;
-let expandedRow=-1, alertOpen=false, leaveTrendOpen=false;
+let otChartInst=null;
+let alertOpen=false;
 let otTargetVisible=false; // ① 目標値の推移はデフォルト非表示（タップで表示）
 
 /* ═══ ユーティリティ ═══ */
@@ -1047,12 +976,6 @@ function toggleDataMgr(){
   const open=body.style.display==='none';
   body.style.display=open?'block':'none';
   if(chev) chev.style.transform=open?'rotate(180deg)':'';
-}
-function toggleLeaveTrend(){
-  leaveTrendOpen=!leaveTrendOpen;
-  document.getElementById('leaveTrendBody')?.classList.toggle('open',leaveTrendOpen);
-  document.getElementById('leaveTrendChevron')?.classList.toggle('open',leaveTrendOpen);
-  if(leaveTrendOpen) renderLeaveTrendChart(); // 展開時のみ描画
 }
 /* ═══ ② モバイル: 残業・有休KPIの開閉（デフォルト非表示） ═══ */
 let kpiPanelOpen=false;
@@ -1231,74 +1154,10 @@ function renderProgress(){
   }).join("");
 }
 
-/* ═══ 有休取得 月次推移グラフ ═══ */
-let leaveTrendInstEmbed=null, leaveRateInstEmbed=null; // PC埋め込み用インスタンス
-
-function getLeaveGroupFilter(){
-  // PC時は埋め込みセレクト、モバイル時は独立カードのセレクトを参照
-  const isPC = window.innerWidth > 760;
-  return (isPC
-    ? document.getElementById("leaveTrendGroupSelEmbed")
-    : document.getElementById("leaveTrendGroupSel"))?.value || "all";
-}
-
-// モバイル用（折りたたみ展開時）
-function renderLeaveTrendChart(){
-  if(!leaveTrendOpen) return;
-  const grpF = document.getElementById("leaveTrendGroupSel")?.value || "all";
-  _renderLeavePair(grpF, "leaveTrendChart", "leaveRateChart", leaveTrendInst, leaveRateInst, 9);
-}
-
-// PC埋め込み用（常時描画）
-function renderLeaveTrendEmbed(){
-  const grpF = document.getElementById("leaveTrendGroupSelEmbed")?.value || "all";
-  const result = _renderLeavePair(grpF, "leaveTrendChartEmbed", "leaveRateChartEmbed", leaveTrendInstEmbed, leaveRateInstEmbed, 8);
-  leaveTrendInstEmbed = result.bar;
-  leaveRateInstEmbed  = result.line;
-}
-
-// 共通描画ロジック
-function _renderLeavePair(grpF, barId, lineId, oldBar, oldLine, fontSize){
-  const filtered = grpF==="all" ? members : members.filter(m=>m.group===grpF);
-  const totalDays = sumArr(filtered.map(m=>m.days));
-  const monthlyTaken = MONTHS.map((_,mi)=>sumArr(filtered.map(m=>m.takenMonths[mi]||0)));
-  const cumulTaken = monthlyTaken.reduce((acc,v,i)=>{acc.push((acc[i-1]||0)+v);return acc;},[]);
-  const cumulRate = cumulTaken.map(c=>totalDays>0?+(c/totalDays*100).toFixed(1):0);
-  const xTick = {font:{size:fontSize},color:"#64748b",maxRotation:45,autoSkip:true,maxTicksLimit:6,
-    callback:(val,i)=>MONTHS[i].replace("月","")+"月"};
-
-  if(oldBar) oldBar.destroy();
-  const bar = new Chart(document.getElementById(barId),{
-    type:"bar",
-    data:{labels:MONTHS,datasets:[{label:"月別取得数",data:monthlyTaken,backgroundColor:"#185FA590",borderRadius:3,maxBarThickness:16}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>"取得: "+ctx.raw+"日"}}},
-      scales:{x:{ticks:xTick,grid:{color:"#f1f5f9"}},
-        y:{beginAtZero:true,ticks:{font:{size:fontSize},color:"#64748b",callback:v=>v+"日"},grid:{color:"#f1f5f9"}}}}
-  });
-
-  if(oldLine) oldLine.destroy();
-  const line = new Chart(document.getElementById(lineId),{
-    type:"line",
-    data:{labels:MONTHS,datasets:[
-      {label:"累積取得率",data:cumulRate,borderColor:"#185FA5",backgroundColor:"#185FA520",fill:true,borderWidth:2,pointRadius:2,tension:.3},
-      {label:"目標(80%)",data:new Array(12).fill(80),borderColor:"#16a34a",borderDash:[5,3],borderWidth:1.5,pointRadius:0}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+": "+ctx.raw+"%"}}},
-      scales:{x:{ticks:xTick,grid:{color:"#f1f5f9"}},
-        y:{min:0,max:110,ticks:{font:{size:fontSize},color:"#64748b",maxTicksLimit:5,callback:v=>v+"%"},grid:{color:"#f1f5f9"}}}}
-  });
-
-  // モバイル用インスタンスを更新
-  if(barId==="leaveTrendChart")   { leaveTrendInst=bar; leaveRateInst=line; }
-  return {bar, line};
-}
-
 /* ═══ ⑤ グループ管理 ═══ */
 function updateGroupSelects(){
-  // ダッシュボード有休グラフフィルター・月次推移（独立カード・PC埋め込み両方）を更新
-  ["groupFilterSel","leaveTrendGroupSel","leaveTrendGroupSelEmbed"].forEach(id=>{
+  // ダッシュボード有休グラフフィルター（メンバー別 有休取得状況）を更新
+  ["groupFilterSel"].forEach(id=>{
     const el=document.getElementById(id); if(!el) return;
     const cur=el.value;
     el.innerHTML='<option value="all">全グループ</option>'+
@@ -1363,10 +1222,6 @@ function renderMemberChart(){
 }
 function refreshMember(){
   renderKPI(); renderAlerts(); renderMemberChart();
-  // PC: 常時表示の埋め込みグラフを更新
-  if(window.innerWidth > 760) renderLeaveTrendEmbed();
-  // モバイル: 展開中のみ更新
-  else if(leaveTrendOpen) renderLeaveTrendChart();
   renderInputTable();
 }
 
@@ -1456,7 +1311,7 @@ function renderInputTable(){
     <th style="text-align:left;min-width:60px">氏名</th>
     <th>グループ</th><th>付与数</th><th>取得数</th>
     <th class="col-sp-hide" style="min-width:120px">取得率</th>
-    <th class="col-sp-hide">残日数</th><th style="width:56px">月別</th>
+    <th class="col-sp-hide">残日数</th>
   </tr>`;
   let d=members.map((m,i)=>({...m,idx:i,taken:mTaken(m),achv:achvPct(mTaken(m),m.days)}));
   if(srt==="achv_asc")   d.sort((a,b)=>a.achv-b.achv);
@@ -1465,68 +1320,20 @@ function renderInputTable(){
   let html='';
   d.forEach((m)=>{
     const a=m.achv,bc=barColor(a),rem=Math.max(0,m.days-m.taken);
-    const isExp=expandedRow===m.idx;
     const gc=grpColor(m.group);
     html+=`<tr>
       <td>${m.name}</td>
       <td>${m.group?`<span class="grp-badge" style="background:${gc.bg};color:${gc.text}">${m.group}</span>`:'<span style="font-size:10px;color:#94a3b8">未設定</span>'}</td>
       <td style="color:#64748b;font-weight:600">${m.days}日</td>
-      <td><select class="num-input" style="width:72px" onchange="updateTakenDirect(${m.idx},this.value)">${Array.from({length:m.days*2+1},(_,i)=>{const v=i/2;return `<option value="${v}"${v===m.taken?" selected":""}>${v}日</option>`;}).join("")}</select></td>
+      <td style="color:#64748b;font-weight:600">${m.taken}日</td>
       <td class="col-sp-hide" style="text-align:left;padding-left:10px">
         <span class="achv-bar-bg"><span class="achv-bar-fill" style="width:${a}%;background:${bc}"></span></span>
         <span class="achv-pct" style="color:${bc}">${a}%</span>
       </td>
       <td class="col-sp-hide" style="font-weight:700;color:${rem===0?"#085041":"#64748b"}">${rem} 日</td>
-      <td><button class="btn btn-sm${isExp?" btn-primary":""}" onclick="toggleMonthly(${m.idx})">${isExp?"▲":"月別"}</button></td>
     </tr>`;
-    if(isExp){
-      const cells=MONTHS.map((mo,mi)=>`<div class="month-cell"><label>${mo}</label>
-        <input type="number" min="0" max="${m.days}" step="0.5" value="${m.takenMonths[mi]||0}" onchange="updateMonthly(${m.idx},${mi},this.value)">
-      </div>`).join('');
-      html+=`<tr class="month-expand-row"><td colspan="100">
-        <div class="month-grid">${cells}
-          <div class="month-total">月別合計: <strong>${m.taken}</strong> 日 ／ 付与: ${m.days}日 ／ 達成率: ${a}%</div>
-        </div></td></tr>`;
-    }
   });
   document.getElementById("memberTbody").innerHTML=html;
-}
-function toggleMonthly(idx){ expandedRow=expandedRow===idx?-1:idx; renderInputTable(); }
-function updateMonthly(idx,mi,val){
-  let v=Math.max(0,parseFloat(val)||0);
-  v=Math.round(v*2)/2; // 0.5日刻みに丸める（半休対応）
-  members[idx].takenMonths[mi]=Math.min(v,members[idx].days);
-  const total=sumArr(members[idx].takenMonths);
-  if(total>members[idx].days)
-    members[idx].takenMonths[mi]=Math.max(0,members[idx].takenMonths[mi]-(total-members[idx].days));
-  saveData(); refreshMember(); renderInputTable();
-}
-// 取得数を合計値で直接入力したとき
-function updateTakenDirect(idx, val) {
-  let newTotal = Math.min(Math.max(0, parseFloat(val)||0), members[idx].days);
-  newTotal = Math.round(newTotal*2)/2; // 0.5日刻みに丸める（半休対応）
-  const oldTotal = mTaken(members[idx]);
-
-  if (newTotal === 0) {
-    // ゼロクリア
-    members[idx].takenMonths = new Array(12).fill(0);
-  } else if (oldTotal === 0) {
-    // 月別データなし → 当月にまとめて設定
-    members[idx].takenMonths = new Array(12).fill(0);
-    members[idx].takenMonths[FISCAL_IDX] = newTotal;
-  } else {
-    // 既存の月別データを新しい合計に比例配分（0.5日刻みに丸める）
-    const scale = newTotal / oldTotal;
-    let months = members[idx].takenMonths.map(v => Math.round(v * scale * 2) / 2);
-    // 端数調整：最大値の月に差分を吸収（差分も0.5刻みに丸める）
-    const diff = Math.round((newTotal - sumArr(months)) * 2) / 2;
-    if (diff !== 0) {
-      const maxI = months.indexOf(Math.max(...months));
-      months[maxI] = Math.max(0, Math.round((months[maxI] + diff) * 2) / 2);
-    }
-    members[idx].takenMonths = months.map(v => Math.min(v, members[idx].days));
-  }
-  saveData(); refreshMember(); renderInputTable();
 }
 /* ═══ 管理者認証 ═══ */
 /* ═══ ① 管理者認証（SHA-256ハッシュ＋GAS照合） ═══ */
@@ -1690,15 +1497,13 @@ function doPrint(){
   void document.getElementById("otCard").offsetWidth;
   const yc=getYC(); if(otChartInst) otChartInst.destroy();
   otChartInst=new Chart(document.getElementById("otChart"),buildOTChartConfig(yc));
-  // 埋め込み月次推移も再描画（印刷用サイズで出力）
-  renderLeaveTrendEmbed();
   setTimeout(()=>window.print(),300);
 }
 window.addEventListener("afterprint",()=>{
   const main=document.querySelector("#dashboardSection .main"),topRow=document.getElementById("topRow");
   main.style.cssText=""; topRow.style.display="";
   ["kpiGrid","alertPanel","otCard","summaryCard","memberCard"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.gridArea="";});
-  setTimeout(()=>{ renderOTChart(); renderLeaveTrendEmbed(); },80);
+  setTimeout(()=>{ renderOTChart(); },80);
 });
 
 /* ═══ 初期化 ═══ */
@@ -2064,8 +1869,6 @@ function renderAll(){
   renderTodayBadge(); renderKPI(); renderAlerts();
   renderYearBtns(); renderOTLegend(); renderOTChart(); renderProgress();
   renderMemberChart();
-  if(window.innerWidth > 760) renderLeaveTrendEmbed();
-  else if(leaveTrendOpen) renderLeaveTrendChart();
   renderSalesYearBtns(); renderSalesLegend(); renderSalesChart(); renderSalesKPI(); renderSalesSummary();
   renderSummaryTable();
   updateGroupSelects();
