@@ -757,21 +757,7 @@ function applyData(d){
   }
 }
 
-/* ═══ ⑨ メンバー設定（氏名・グループ・付与日数）をスプレッドシートから取得・反映 ═══ */
-// スプレッドシートの「メンバー設定」シートを取得（未設定/失敗時はnull）
-async function loadRoster(){
-  if(!gasUrl) return null;
-  try{
-    const res = await fetch(gasUrl+'?action=get_roster&t='+Date.now(),{redirect:'follow'});
-    const d = await res.json();
-    if(d.error || !Array.isArray(d.roster)) return null;
-    return d.roster; // [{name, group, days}, ...]
-  }catch(e){ return null; }
-}
-// 取得したロースター（氏名・グループ・付与日数）を members/groups に反映
-// ・氏名は一致するメンバーの取得月別データ(takenMonths)を引き継ぐ
-// ・シートにない氏名は削除、シートにしかない新しい氏名は新規追加（取得0からスタート）
-// ・グループ一覧はロースターのグループ列から自動抽出（重複除去・出現順）
+/* ═══ ⑨ メンバー設定（氏名・グループ・付与日数・取得数）を反映 ═══ */
 // ⑨ メンバー設定シートの「取得数」（D列）＝ダッシュボードの取得数、が常に一致するように反映
 // （月別入力は廃止したため、内訳は保持せず毎回D列の値をそのまま採用する）
 function applyRoster(roster){
@@ -790,31 +776,36 @@ function applyRoster(roster){
   });
 }
 
-// 初期読込（GAS優先 → localStorage fallback）
-async function loadData(){
+// ⑩ 高速化① ローカルキャッシュを同期的に即反映（体感速度向上のため、通信を待たずに描画できる状態を作る）
+function loadFromLocalStorage(){
   gasUrl=localStorage.getItem(GAS_KEY) || DEFAULT_GAS_URL;
-  if(gasUrl){
-    setSaveStatus('loading');
-    try{
-      const res=await fetch(gasUrl+'?t='+Date.now(),{redirect:'follow'});
-      const d=await res.json();
-      if(!d.error&&(d.actualData||d.members)){
-        applyData(d);
-        // localStorageにも同期（salesTargetsが欠けている場合は現在の値を補完）
-        const toStore = Object.assign({salesTargets}, d);
-        try{ localStorage.setItem(STORE_KEY,JSON.stringify(toStore)); }catch(e){}
-        setSaveStatus('saved');
-        setTimeout(()=>setSaveStatus('idle'),2000);
-        return;
-      }
-    }catch(e){ /* GAS失敗 → localStorageへ */ }
-  }
-  // localStorageから読込
   try{
     const raw=localStorage.getItem(STORE_KEY);
     if(raw) applyData(JSON.parse(raw));
   }catch(e){}
-  setSaveStatus('idle');
+}
+
+// ⑩ 高速化② GASへの通信を1回にまとめて取得（メインデータ + メンバー設定ロースターを同梱）
+// 成功時はtrue、失敗/未接続時はfalseを返す
+async function loadFromGAS(){
+  if(!gasUrl) return false;
+  setSaveStatus('loading');
+  try{
+    const res=await fetch(gasUrl+'?t='+Date.now(),{redirect:'follow'});
+    const d=await res.json();
+    if(d.error || !(d.actualData||d.members)){ setSaveStatus('idle'); return false; }
+    applyData(d);
+    if(Array.isArray(d.roster)) applyRoster(d.roster);
+    // localStorageにも同期（salesTargetsが欠けている場合は現在の値を補完）
+    const toStore = Object.assign({salesTargets}, d);
+    try{ localStorage.setItem(STORE_KEY,JSON.stringify(toStore)); }catch(e){}
+    setSaveStatus('saved');
+    setTimeout(()=>setSaveStatus('idle'),2000);
+    return true;
+  }catch(e){
+    setSaveStatus('idle');
+    return false; // GAS失敗 → 直前にlocalStorageから読み込んだ内容のまま表示を継続
+  }
 }
 
 function doReset(){
@@ -1874,10 +1865,16 @@ function renderAll(){
   updateGroupSelects();
 }
 async function init(){
-  await loadData();  // GAS/localStorageから読込（非同期）
-  const roster = await loadRoster(); // ⑨ スプレッドシート「メンバー設定」から氏名・グループ・付与日数・取得数を取得
-  if(roster){ applyRoster(roster); saveData(); }
+  // ⑩ 高速化: まずローカルキャッシュを即座に反映・描画（通信を待たせない）
+  loadFromLocalStorage();
   renderAll();
+  // その後、裏でGASから最新データ（メインデータ＋メンバー設定を1回の通信で取得）を反映して再描画
+  const ok = await loadFromGAS();
+  if(ok){
+    // 実績入力画面をすでに操作中の場合は、入力中のデータを上書きしないためここでは反映しない
+    const inputActive = document.getElementById('inputSection')?.classList.contains('active');
+    if(!inputActive){ saveData(); renderAll(); }
+  }
 }
 init();
 document.querySelectorAll(".modal-bg").forEach(bg=>bg.addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal();}));
