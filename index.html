@@ -550,7 +550,7 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
         <div>
           <div class="card-title">② メンバー有休 管理</div>
           <div style="font-size:10px;color:#64748b;margin-top:1px">
-            氏名・グループ・付与日数はスプレッドシート「メンバー設定」シートで編集してください（自動で同期されます）。ここでは月別の取得日数のみ入力できます。
+            氏名・グループ・付与日数はスプレッドシート「メンバー設定」シートで編集してください（自動で同期されます）。同シートの「取得数」列は、新しい氏名（氏名変更を含む）が初めて同期された時だけ初期値として反映されます。ここでは月別の取得日数のみ入力できます。
           </div>
         </div>
         <select id="inputSortSel" onchange="renderInputTable()">
@@ -841,12 +841,18 @@ function applyRoster(roster){
   const byName = new Map(members.map(m=>[m.name,m]));
   members = roster.map(r=>{
     const existing = byName.get(r.name);
-    return {
-      name: r.name,
-      group: r.group || '',
-      days: r.days>0 ? r.days : 20,
-      takenMonths: existing ? existing.takenMonths : new Array(12).fill(0)
-    };
+    const days = r.days>0 ? r.days : 20;
+    let takenMonths;
+    if(existing){
+      // 既存メンバー：月別の取得実績をそのまま引き継ぐ（シートの「取得数」は参照しない）
+      takenMonths = existing.takenMonths;
+    }else{
+      // 新規（氏名変更で不一致になった場合を含む）：シートの「取得数」を初期値として当月にまとめて反映
+      const seed = Math.min(Math.round((Number(r.takenTotal)||0)*2)/2, days);
+      takenMonths = new Array(12).fill(0);
+      if(seed>0) takenMonths[FISCAL_IDX] = seed;
+    }
+    return { name: r.name, group: r.group || '', days, takenMonths };
   });
   const seen=new Set(); groups=[];
   roster.forEach(r=>{
@@ -2065,8 +2071,8 @@ function renderAll(){
 }
 async function init(){
   await loadData();  // GAS/localStorageから読込（非同期）
-  const roster = await loadRoster(); // ⑨ スプレッドシート「メンバー設定」から氏名・グループ・付与日数を取得
-  if(roster) applyRoster(roster);
+  const roster = await loadRoster(); // ⑨ スプレッドシート「メンバー設定」から氏名・グループ・付与日数・取得数を取得
+  if(roster){ applyRoster(roster); saveData(); }
   renderAll();
 }
 init();
