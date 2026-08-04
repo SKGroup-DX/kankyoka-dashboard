@@ -715,7 +715,10 @@ async function saveToGAS(){
   if(!gasUrl) return;
   setSaveStatus('saving');
   try{
-    const body=JSON.stringify({actualData,members,groups,salesData,salesTargets});
+    const body=JSON.stringify({
+      pinHash: adminHash,
+      payload: {actualData,members,groups,salesData,salesTargets}
+    });
     const res=await fetch(gasUrl,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
     const json=await res.json();
     if(json.error) throw new Error(json.error);
@@ -1334,6 +1337,7 @@ const PIN_HASH_KEY = 'kankyoka_pin_hash'; // ⑥ localStorage に変更後ハッ
 
 let isAdmin   = false;
 let pinBuffer = '';
+let adminHash = ''; // ① ログイン確認済みのPINハッシュ。以後の保存/変更リクエストの認証に使用
 
 // SHA-256ハッシュを計算（Web Crypto API）
 async function sha256(text){
@@ -1373,15 +1377,20 @@ function updatePinDots(){
 async function checkPin(){
   const inputHash = await sha256(pinBuffer);
   let valid = false;
+  let lockMsg = '';
 
-  // GAS連携がある場合はGAS側で照合（⑥ パスワードをGASで管理）
+  // GAS連携がある場合はGAS側で照合（⑥ パスワードをGASで管理、②ロックアウトもGAS側で判定）
   if(gasUrl){
     try{
       const res = await fetch(`${gasUrl}?action=verify_pin&hash=${inputHash}&t=${Date.now()}`,{redirect:'follow'});
       const d   = await res.json();
-      valid = d.valid === true;
+      if(d.locked){
+        lockMsg = `試行回数が多すぎます。${Math.ceil((d.retryAfterSec||0)/60)}分後に再試行してください`;
+      } else {
+        valid = d.valid === true;
+      }
     }catch(e){
-      // GAS失敗時はローカルハッシュで照合
+      // GAS失敗時はローカルハッシュで照合（ロックアウトはGAS側でのみ判定される点に注意）
       valid = inputHash === getStoredHash();
     }
   } else {
@@ -1390,6 +1399,8 @@ async function checkPin(){
 
   if(valid){
     isAdmin = true;
+    adminHash = inputHash; // ① 以後の保存/変更リクエストの認証に使用
+    localStorage.setItem(PIN_HASH_KEY, inputHash); // ローカルキャッシュも最新化
     closeModal();
     applyAdminUI();
     checkGasSetup(); // ③ GAS未設定警告
@@ -1404,12 +1415,13 @@ async function checkPin(){
     dots.classList.remove('pin-shake');
     void dots.offsetWidth;
     dots.classList.add('pin-shake');
-    document.getElementById('pinError').textContent = 'パスワードが違います';
+    document.getElementById('pinError').textContent = lockMsg || 'パスワードが違います';
     setTimeout(()=>{ pinBuffer=''; updatePinDots(); dots.classList.remove('pin-shake'); }, 700);
   }
 }
 function lockAdmin(){
   isAdmin = false;
+  adminHash = '';
   applyAdminUI();
   const tab = document.getElementById('dashboardNavTab');
   if(tab) switchSection('dashboard', tab);
@@ -1441,16 +1453,29 @@ async function changePassword(){
   if(nw!==nw2){ el.style.color='#dc2626'; el.textContent='新しいパスワードが一致しません'; return; }
   const curHash = await sha256(cur);
   const newHash = await sha256(nw);
-  if(curHash !== getStoredHash()){ el.style.color='#dc2626'; el.textContent='現在のパスワードが違います'; return; }
-  // GASがあればGASにも反映
-  if(gasUrl){
-    try{
-      const res=await fetch(`${gasUrl}?action=change_pin&oldHash=${curHash}&newHash=${newHash}&t=${Date.now()}`,{redirect:'follow'});
-      const d=await res.json();
-      if(!d.success){ el.style.color='#dc2626'; el.textContent='GAS保存失敗: '+d.error; return; }
-    }catch(e){ /* GAS失敗でもローカル変更は続行 */ }
+
+  // ① ② 現在のパスワード照合はGASを正として行う（ロックアウトもGAS側で一元管理するため、
+  // ローカルキャッシュのみでの判定は行わない。ローカル判定だとブルートフォース対策を迂回されてしまう）
+  if(!gasUrl){
+    el.style.color='#dc2626'; el.textContent='スプレッドシート連携が未設定のため変更できません';
+    return;
   }
+  try{
+    const res=await fetch(`${gasUrl}?action=change_pin&oldHash=${curHash}&newHash=${newHash}&t=${Date.now()}`,{redirect:'follow'});
+    const d=await res.json();
+    if(d.locked){
+      el.style.color='#dc2626';
+      el.textContent=`試行回数が多すぎます。${Math.ceil((d.retryAfterSec||0)/60)}分後に再試行してください`;
+      return;
+    }
+    if(!d.success){ el.style.color='#dc2626'; el.textContent=d.error||'現在のパスワードが違います'; return; }
+  }catch(e){
+    el.style.color='#dc2626'; el.textContent='通信に失敗しました。時間をおいて再試行してください';
+    return;
+  }
+
   localStorage.setItem(PIN_HASH_KEY, newHash);
+  adminHash = newHash; // ① 以後の保存リクエストにも新しいハッシュを使う
   el.style.color='#16a34a'; el.textContent='✅ パスワードを変更しました';
   ['changePinCurrent','changePinNew','changePinNew2'].forEach(id=>{document.getElementById(id).value='';});
 }

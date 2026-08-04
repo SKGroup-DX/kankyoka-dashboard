@@ -15,6 +15,9 @@ const MONTHS = ['4月','5月','6月','7月','8月','9月','10月','11月','12月
 const MAX_BACKUPS = 30;
 // デフォルトパスワード: 3150 の SHA-256ハッシュ
 const DEFAULT_PIN_HASH = '4d364fbb3786fc31157cc1e2a2671aac0e36348ae9d6b4ba4459ee883c240fe8';
+// ② ブルートフォース対策: 連続失敗回数としきい値
+const MAX_PIN_ATTEMPTS = 5;
+const LOCKOUT_MINUTES  = 5;
 
 /* ─── GET: データ取得 / PIN照合 ─── */
 function doGet(e) {
@@ -39,8 +42,22 @@ function doGet(e) {
 /* ─── POST: データ保存 ─── */
 function doPost(e) {
   try {
-    const json = e.postData.contents;
-    const data = JSON.parse(json);
+    const body = JSON.parse(e.postData.contents);
+
+    // ① 書き込みにもPIN認証を要求（②のロックアウトも共有）
+    const auth = checkPinAuth_(body.pinHash || '');
+    if (auth.locked) {
+      return ok_(JSON.stringify({
+        error: '試行回数が多すぎます。しばらくしてから再試行してください',
+        locked: true, retryAfterSec: auth.retryAfterSec
+      }));
+    }
+    if (!auth.ok) {
+      return ok_(JSON.stringify({ error: '認証に失敗しました' }));
+    }
+
+    const data = body.payload || {};
+    const json = JSON.stringify(data);
 
     const sheet = getOrCreate_(SHEET_JSON);
     sheet.getRange('A1').setValue(json);
@@ -64,8 +81,11 @@ function doPost(e) {
 /* ─── ⑥ PIN照合 ─── */
 function verifyPin_(inputHash) {
   try {
-    const stored = getStoredPinHash_();
-    return ok_(JSON.stringify({ valid: stored === inputHash }));
+    const auth = checkPinAuth_(inputHash);
+    if (auth.locked) {
+      return ok_(JSON.stringify({ valid: false, locked: true, retryAfterSec: auth.retryAfterSec }));
+    }
+    return ok_(JSON.stringify({ valid: auth.ok }));
   } catch (err) {
     return ok_(JSON.stringify({ valid: false, error: err.message }));
   }
@@ -74,7 +94,14 @@ function verifyPin_(inputHash) {
 /* ─── ⑥ PIN変更 ─── */
 function changePin_(oldHash, newHash) {
   try {
-    if (getStoredPinHash_() !== oldHash)
+    const auth = checkPinAuth_(oldHash);
+    if (auth.locked) {
+      return ok_(JSON.stringify({
+        success: false, locked: true, retryAfterSec: auth.retryAfterSec,
+        error: '試行回数が多すぎます'
+      }));
+    }
+    if (!auth.ok)
       return ok_(JSON.stringify({ success: false, error: '現在のパスワードが違います' }));
     if (!newHash || newHash.length !== 64)
       return ok_(JSON.stringify({ success: false, error: '新しいパスワードが無効です' }));
@@ -94,6 +121,38 @@ function getStoredPinHash_() {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_SETTINGS);
   if (!s) return DEFAULT_PIN_HASH;
   return s.getRange('A1').getValue() || DEFAULT_PIN_HASH;
+}
+
+/* ─── ① ② PIN認証（ロックアウト付き） ─── */
+// doPost / verifyPin_ / changePin_ が共有する認証窓口。
+// スクリプトプロパティに失敗回数とロック解除時刻を記録し、連続失敗でロックする。
+function checkPinAuth_(hash) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const now = Date.now();
+    const lockedUntil = Number(props.getProperty('PIN_LOCKED_UNTIL') || 0);
+    if (now < lockedUntil) {
+      return { ok: false, locked: true, retryAfterSec: Math.ceil((lockedUntil - now) / 1000) };
+    }
+    const stored = getStoredPinHash_();
+    if (stored === hash) {
+      props.deleteProperty('PIN_FAIL_COUNT');
+      props.deleteProperty('PIN_LOCKED_UNTIL');
+      return { ok: true };
+    }
+    const fails = Number(props.getProperty('PIN_FAIL_COUNT') || 0) + 1;
+    if (fails >= MAX_PIN_ATTEMPTS) {
+      props.setProperty('PIN_LOCKED_UNTIL', String(now + LOCKOUT_MINUTES * 60 * 1000));
+      props.deleteProperty('PIN_FAIL_COUNT');
+      return { ok: false, locked: true, retryAfterSec: LOCKOUT_MINUTES * 60 };
+    }
+    props.setProperty('PIN_FAIL_COUNT', String(fails));
+    return { ok: false, locked: false, remaining: MAX_PIN_ATTEMPTS - fails };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /* ─── ⑧ バックアップ履歴（最新30件保持） ─── */
