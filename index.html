@@ -694,6 +694,7 @@ let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
 let groups     = [];
 let gasUrl     = '';
 let saveTimer  = null;
+let pendingSave = false; // ⑤ デバウンス待ち保存が残っているか（タブを閉じる際のフラッシュ判定用）
 
 function setSaveStatus(s){
   const el=document.getElementById('saveStatus'); if(!el) return;
@@ -702,13 +703,25 @@ function setSaveStatus(s){
   el.style.color=s==='error'?'#dc2626':s==='saved'?'#16a34a':'#64748b';
 }
 
+// ⑥ fetchにタイムアウトを設ける（GASのコールドスタート等でハングし続けないように）
+async function fetchWithTimeout(url, opts={}, timeoutMs=15000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), timeoutMs);
+  try{
+    return await fetch(url, {...opts, signal: ctrl.signal});
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // ① データ保存（localStorage即時 + GAS遅延2秒デバウンス）
 function saveData(){
   try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups,salesData,salesTargets})); }catch(e){}
   setSaveStatus('local');
   if(!gasUrl){ return; }
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(saveToGAS, 2000);
+  pendingSave = true;
+  saveTimer=setTimeout(()=>{ pendingSave=false; saveToGAS(); }, 2000);
 }
 
 async function saveToGAS(){
@@ -719,7 +732,7 @@ async function saveToGAS(){
       pinHash: adminHash,
       payload: {actualData,members,groups,salesData,salesTargets}
     });
-    const res=await fetch(gasUrl,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
+    const res=await fetchWithTimeout(gasUrl,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
     const json=await res.json();
     if(json.error) throw new Error(json.error);
     setSaveStatus('saved');
@@ -729,6 +742,24 @@ async function saveToGAS(){
     setTimeout(()=>setSaveStatus('idle'),4000);
   }
 }
+
+// ⑤ タブを閉じる/バックグラウンド化する直前に、デバウンス待ちの保存を強制送信する
+// （sendBeaconはページ離脱時でも配信が保証されるが、レスポンスは受け取れない点に注意）
+function flushPendingSave(){
+  if(!pendingSave || !gasUrl) return;
+  clearTimeout(saveTimer);
+  pendingSave = false;
+  try{
+    const body=JSON.stringify({
+      pinHash: adminHash,
+      payload: {actualData,members,groups,salesData,salesTargets}
+    });
+    navigator.sendBeacon(gasUrl, new Blob([body], {type:'text/plain;charset=utf-8'}));
+  }catch(e){}
+}
+window.addEventListener('pagehide', flushPendingSave);
+window.addEventListener('beforeunload', flushPendingSave);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flushPendingSave(); });
 
 // データ適用（GAS/localStorage共通）
 function applyData(d){
@@ -781,7 +812,9 @@ function applyRoster(roster){
 
 // ⑩ 高速化① ローカルキャッシュを同期的に即反映（体感速度向上のため、通信を待たずに描画できる状態を作る）
 function loadFromLocalStorage(){
-  gasUrl=localStorage.getItem(GAS_KEY) || DEFAULT_GAS_URL;
+  // ⑧ 未設定の端末(null)は既定URLに自動接続。明示的に空にして保存した場合は連携を切ったままにする
+  const storedGasUrl = localStorage.getItem(GAS_KEY);
+  gasUrl = (storedGasUrl===null) ? DEFAULT_GAS_URL : storedGasUrl;
   try{
     const raw=localStorage.getItem(STORE_KEY);
     if(raw) applyData(JSON.parse(raw));
@@ -794,7 +827,7 @@ async function loadFromGAS(){
   if(!gasUrl) return false;
   setSaveStatus('loading');
   try{
-    const res=await fetch(gasUrl+'?t='+Date.now(),{redirect:'follow'});
+    const res=await fetchWithTimeout(gasUrl+'?t='+Date.now(),{redirect:'follow'});
     const d=await res.json();
     if(d.error || !(d.actualData||d.members)){ setSaveStatus('idle'); return false; }
     applyData(d);
@@ -839,7 +872,7 @@ async function testGasConnection(){
   if(!url){ el.style.color='#dc2626'; el.textContent='URLを入力してください'; return; }
   el.style.color='#64748b'; el.textContent='接続確認中…';
   try{
-    const res=await fetch(url+'?t='+Date.now(),{redirect:'follow'});
+    const res=await fetchWithTimeout(url+'?t='+Date.now(),{redirect:'follow'});
     const d=await res.json();
     if(d.error) throw new Error(d.error);
     el.style.color='#16a34a';
@@ -869,6 +902,10 @@ const getIYC  = ()=>YCFG.find(y=>y.key===inputYear);
 // Safari 15.3以前は findLastIndex / findLast 未サポートのためポリフィル
 function arrFindLastIndex(arr, pred){ for(let i=arr.length-1;i>=0;i--){ if(pred(arr[i],i)) return i; } return -1; }
 function arrFindLast(arr, pred){ for(let i=arr.length-1;i>=0;i--){ if(pred(arr[i],i)) return arr[i]; } return undefined; }
+// ⑦ XSS対策: スプレッドシート経由で入る氏名・グループ名はHTMLエスケープしてから描画する
+function escapeHtml(s){
+  return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 /* ═══ ヘッダー ═══ */
 function renderTodayBadge(){
@@ -997,7 +1034,8 @@ function resetDismissed(){ localStorage.removeItem(DISMISSED_KEY); renderAlerts(
 
 function renderAlerts(){
   const dismissed = getDismissed();
-  const lowM=members.filter(m=>{const t=mTaken(m);return m.days>0&&achvPct(t,m.days)<50&&(m.days-t)>0;});
+  // ⑦ idはインデックス由来にし、氏名(スプレッドシート由来の文字列)をonclick属性に埋め込まない
+  const lowM=members.map((m,idx)=>({...m,idx})).filter(m=>{const t=mTaken(m);return m.days>0&&achvPct(t,m.days)<50&&(m.days-t)>0;});
   const overO=KEYS.flatMap(k=>{
     const yc=YCFG.find(y=>y.key===k);
     return actualData[k].map((v,i)=>v!==null&&yc.tgt[i]!==null&&v>yc.tgt[i]?{year:k,month:MONTHS[i],actual:v,target:yc.tgt[i]}:null).filter(Boolean);
@@ -1009,8 +1047,8 @@ function renderAlerts(){
   });
   lowM.forEach(m=>{
     const t=mTaken(m);
-    const id=`leave_${m.name}`;
-    allAlerts.push({id,type:"warn",icon:"🟡",msg:`有休取得率低: ${m.name}（${t}日/${m.days}日付与 = ${achvPct(t,m.days)}%）`});
+    const id=`leave_${m.idx}`;
+    allAlerts.push({id,type:"warn",icon:"🟡",msg:`有休取得率低: ${escapeHtml(m.name)}（${t}日/${m.days}日付与 = ${achvPct(t,m.days)}%）`});
   });
 
   // 確認済みを除いたアクティブなアラート
@@ -1155,7 +1193,7 @@ function updateGroupSelects(){
     const el=document.getElementById(id); if(!el) return;
     const cur=el.value;
     el.innerHTML='<option value="all">全グループ</option>'+
-      groups.map(g=>`<option value="${g}">${g}</option>`).join('');
+      groups.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
     if(groups.includes(cur)) el.value=cur;
   });
 }
@@ -1190,8 +1228,8 @@ function renderMemberChart(){
     const barLabel=m.taken>0
       ?`<span class="cbar-bar-lbl" style="left:${tw}%;transform:translateY(-50%);color:${bc};font-size:9px;font-weight:700;padding-left:3px">${takenLbl}</span>`
       :'';
-    return `<div class="cbar-row" title="取得: ${takenLbl}日 / 付与: ${m.days}日（${m.achv}%）${m.group?' / '+m.group:''}">
-      <div class="cbar-name">${m.name}</div>
+    return `<div class="cbar-row" title="取得: ${takenLbl}日 / 付与: ${m.days}日（${m.achv}%）${m.group?' / '+escapeHtml(m.group):''}">
+      <div class="cbar-name">${escapeHtml(m.name)}</div>
       <div class="cbar-wrap">
         <div class="cbar-track">
           <div class="cbar-taken"  style="width:${tw}%;background:${bc}"></div>
@@ -1202,7 +1240,7 @@ function renderMemberChart(){
       </div>
       <div class="cbar-pct" style="color:${bc}">${m.achv}%</div>
       <div class="cbar-days">${m.days}日</div>
-      ${m.group?`<span class="cbar-grp" style="background:${gc.bg};color:${gc.text}">${m.group}</span>`:''}
+      ${m.group?`<span class="cbar-grp" style="background:${gc.bg};color:${gc.text}">${escapeHtml(m.group)}</span>`:''}
     </div>`;
   }).join('');
   const ticks=tvs.map((v,i)=>{
@@ -1316,8 +1354,8 @@ function renderInputTable(){
     const a=m.achv,bc=barColor(a),rem=Math.max(0,m.days-m.taken);
     const gc=grpColor(m.group);
     html+=`<tr>
-      <td>${m.name}</td>
-      <td>${m.group?`<span class="grp-badge" style="background:${gc.bg};color:${gc.text}">${m.group}</span>`:'<span style="font-size:10px;color:#94a3b8">未設定</span>'}</td>
+      <td>${escapeHtml(m.name)}</td>
+      <td>${m.group?`<span class="grp-badge" style="background:${gc.bg};color:${gc.text}">${escapeHtml(m.group)}</span>`:'<span style="font-size:10px;color:#94a3b8">未設定</span>'}</td>
       <td style="color:#64748b;font-weight:600">${m.days}日</td>
       <td style="color:#64748b;font-weight:600">${m.taken}日</td>
       <td class="col-sp-hide" style="text-align:left;padding-left:10px">
@@ -1382,7 +1420,7 @@ async function checkPin(){
   // GAS連携がある場合はGAS側で照合（⑥ パスワードをGASで管理、②ロックアウトもGAS側で判定）
   if(gasUrl){
     try{
-      const res = await fetch(`${gasUrl}?action=verify_pin&hash=${inputHash}&t=${Date.now()}`,{redirect:'follow'});
+      const res = await fetchWithTimeout(`${gasUrl}?action=verify_pin&hash=${inputHash}&t=${Date.now()}`,{redirect:'follow'});
       const d   = await res.json();
       if(d.locked){
         lockMsg = `試行回数が多すぎます。${Math.ceil((d.retryAfterSec||0)/60)}分後に再試行してください`;
@@ -1461,7 +1499,7 @@ async function changePassword(){
     return;
   }
   try{
-    const res=await fetch(`${gasUrl}?action=change_pin&oldHash=${curHash}&newHash=${newHash}&t=${Date.now()}`,{redirect:'follow'});
+    const res=await fetchWithTimeout(`${gasUrl}?action=change_pin&oldHash=${curHash}&newHash=${newHash}&t=${Date.now()}`,{redirect:'follow'});
     const d=await res.json();
     if(d.locked){
       el.style.color='#dc2626';

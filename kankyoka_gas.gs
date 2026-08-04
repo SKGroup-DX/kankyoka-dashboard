@@ -11,6 +11,7 @@ const SHEET_LEAVE    = '有休取得';
 const SHEET_BACKUP   = 'バックアップ履歴';
 const SHEET_SETTINGS = '設定';
 const SHEET_SALES    = '売上実績';
+const SHEET_ROSTER   = 'メンバー設定'; // ⑨ 氏名・グループ・付与日数・取得数はここが正
 const MONTHS = ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
 const MAX_BACKUPS = 30;
 // デフォルトパスワード: 3150 の SHA-256ハッシュ
@@ -33,7 +34,10 @@ function doGet(e) {
   try {
     const sheet = getOrCreate_(SHEET_JSON);
     const json  = sheet.getRange('A1').getValue();
-    return ok_(json || '{}');
+    const data  = json ? JSON.parse(json) : {};
+    // ⑨ メンバー設定シートの読込に失敗してもメインデータは返す（機能を分離してダッシュボード全体を落とさない）
+    try { data.roster = readRoster_(); } catch (e) { /* ロースター読込失敗時はメインデータのみ返す */ }
+    return ok_(JSON.stringify(data));
   } catch (err) {
     return ok_(JSON.stringify({ error: err.message }));
   }
@@ -153,6 +157,49 @@ function checkPinAuth_(hash) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/* ─── ⑨ メンバー設定シート（氏名・グループ・付与日数・取得数はここが正） ─── */
+// 列: A=氏名 B=グループ C=付与日数 D=取得数
+function readRoster_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_ROSTER);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_ROSTER);
+    sheet.getRange(1,1,1,4).setValues([['氏名','グループ','付与日数','取得数']])
+      .setFontWeight('bold').setBackground('#f1f5f9');
+    sheet.setFrozenRows(1);
+    seedRosterFromExisting_(sheet);
+  }
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  return sheet.getRange(2, 1, lastRow - 1, 4).getValues()
+    .filter(r => String(r[0] || '').trim() !== '')
+    .map(r => ({
+      name: String(r[0]).trim(),
+      group: String(r[1] || '').trim(),
+      days: Number(r[2]) || 0,
+      takenTotal: Number(r[3]) || 0
+    }));
+}
+
+/* ─── ⑨ 初回作成時、既存のダッシュボードデータからメンバー設定シートへ移行 ─── */
+function seedRosterFromExisting_(sheet) {
+  try {
+    const jsonSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_JSON);
+    if (!jsonSheet) return;
+    const raw = jsonSheet.getRange('A1').getValue();
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    const members = data.members || [];
+    if (!members.length) return;
+    const rows = members.map(m => {
+      const tm = m.takenMonths || [];
+      const taken = tm.reduce((a, v) => a + (v || 0), 0);
+      return [m.name, m.group || '', m.days || 20, taken];
+    });
+    sheet.getRange(2, 1, rows.length, 4).setValues(rows);
+  } catch (e) { /* 移行失敗時は空のまま。管理者に手入力を促す */ }
 }
 
 /* ─── ⑧ バックアップ履歴（最新30件保持） ─── */
