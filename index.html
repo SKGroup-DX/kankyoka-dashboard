@@ -161,6 +161,8 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .kpi-mobile-toggle{display:none}
 /* ── モバイル専用: 残業削減サマリー 開閉タブ（PCでは非表示） ── */
 .summary-mobile-toggle{display:none}
+/* ── モバイル専用: メンバー別 残業推移 開閉タブ（PCでは非表示） ── */
+.memberot-mobile-toggle{display:none}
 /* ── ③ 達成率ドーナツ ── */
 .donut-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:10px 0 6px}
 .donut-item{text-align:center}
@@ -295,6 +297,16 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   #summaryCard.mobile-open{display:block}
   /* モバイル: 年度目標進捗バーも非表示 */
   .prog-grid{display:none !important}
+  /* モバイル: メンバー別 残業推移はデフォルト非表示、タブタップで開閉 */
+  .memberot-mobile-toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    width:100%;padding:9px 14px;margin-bottom:8px;
+    background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+    font-size:12px;font-weight:700;color:#0f172a;cursor:pointer;
+  }
+  .memberot-mobile-toggle:active{background:#f8fafc}
+  #memberOtCard{display:none}
+  #memberOtCard.mobile-open{display:block}
 }
 </style>
 </head>
@@ -390,6 +402,11 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
     </div>
 
     <!-- メンバー別 残業推移 -->
+    <!-- モバイル専用: タップで開閉するタブ（PCでは非表示） -->
+    <button type="button" class="memberot-mobile-toggle" id="memberOtMobileToggle" onclick="toggleMemberOtPanel()">
+      <span>📈 メンバー別 残業推移</span>
+      <span id="memberOtChevron" class="alert-chevron">▼</span>
+    </button>
     <div class="card" id="memberOtCard">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:3px;flex-wrap:wrap;gap:4px">
         <div>
@@ -1038,6 +1055,13 @@ function toggleSummaryPanel(){
   summaryPanelOpen=!summaryPanelOpen;
   document.getElementById('summaryCard')?.classList.toggle('mobile-open',summaryPanelOpen);
   document.getElementById('summaryChevron')?.classList.toggle('open',summaryPanelOpen);
+}
+/* ═══ ⑬ モバイル: メンバー別 残業推移の開閉（デフォルト非表示） ═══ */
+let memberOtPanelOpen=false;
+function toggleMemberOtPanel(){
+  memberOtPanelOpen=!memberOtPanelOpen;
+  document.getElementById('memberOtCard')?.classList.toggle('mobile-open',memberOtPanelOpen);
+  document.getElementById('memberOtChevron')?.classList.toggle('open',memberOtPanelOpen);
 }
 /* ═══ アラート確認済み管理 ═══ */
 const DISMISSED_KEY = 'kankyoka_dismissed_alerts';
