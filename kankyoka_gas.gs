@@ -35,7 +35,8 @@ function doGet(e) {
   try {
     const sheet = getOrCreate_(SHEET_JSON);
     const json  = sheet.getRange('A1').getValue();
-    const data  = json ? JSON.parse(json) : {};
+    let data  = json ? JSON.parse(json) : {};
+    data = unwrapLegacyPayload_(data, sheet); // ⑫ 過去に混入した{pinHash,payload:{...}}形式を検出し自動修復
     // ⑨ メンバー設定シートの読込に失敗してもメインデータは返す（機能を分離してダッシュボード全体を落とさない）
     try { data.roster = readRoster_(); } catch (e) { /* ロースター読込失敗時はメインデータのみ返す */ }
     // ⑪ メンバー別の残業実績（取込データ（月別）由来、あれば返す。失敗してもメインデータは返す）
@@ -318,6 +319,20 @@ function ok_(text) {
   return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON);
 }
 
+/* ─── ⑫ 過去の不具合等で混入した {pinHash,payload:{...}} ラッパーを検出し、自動的に展開・保存し直す ─── */
+// 本来A1には payload の中身（actualData/members/...）がそのまま入るはずだが、
+// 何らかの経緯でPOSTボディ全体がそのまま保存されてしまうと売上データ等が読めなくなる。
+// 検出したら中身を展開してA1へ書き戻し、以後は正しい形で読めるようにする。
+function unwrapLegacyPayload_(data, sheet) {
+  if (!data || typeof data.payload !== 'object' || data.payload === null) return data;
+  const fixed = Object.assign({}, data.payload, data); // dataに直接ある値（後から追加された分）を優先
+  delete fixed.payload;
+  delete fixed.pinHash;
+  try { sheet.getRange('A1').setValue(JSON.stringify(fixed)); }
+  catch (e) { /* 保存に失敗しても今回の応答は修復済みの値を返す */ }
+  return fixed;
+}
+
 // ============================================================
 // ⑩ 勤怠データ自動取込（Googleドライブ連携）
 // 「勤怠データ取込」フォルダに勤怠システム出力のExcel(.xlsx)をドロップすると、
@@ -588,7 +603,8 @@ function recalcFromTrack_(touchedYearMonths, touchedMembers) {
 
   const jsonSheet = getOrCreate_(SHEET_JSON);
   const raw  = jsonSheet.getRange('A1').getValue();
-  const data = raw ? JSON.parse(raw) : {};
+  let data = raw ? JSON.parse(raw) : {};
+  data = unwrapLegacyPayload_(data, jsonSheet); // ⑫ 過去に混入したラッパー形式を検出し自動修復
   data.actualData = data.actualData || {};
   VALID_ACTUAL_YEARS.forEach(y => { if (!data.actualData[y]) data.actualData[y] = new Array(12).fill(null); });
 
