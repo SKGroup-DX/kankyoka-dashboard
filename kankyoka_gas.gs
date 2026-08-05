@@ -336,7 +336,7 @@ function unwrapLegacyPayload_(data, sheet) {
 // ============================================================
 // ⑩ 勤怠データ自動取込（Googleドライブ連携）
 // 「勤怠データ取込」フォルダに勤怠システム出力のExcel(.xlsx)をドロップすると、
-// ファイル内の「総残業時間」「有休取得日数」を読み取り、
+// ファイル内の「申請承認済残業時間」「有休取得日数」を読み取り、
 //   - 残業実績（全メンバー分をその月で合算）→ ダッシュボードのactualDataへ
 //   - 有休取得数（メンバーごと）→「メンバー設定」シートD列へ
 // を自動反映する。処理済みファイルは自動でサブフォルダへ移動。
@@ -423,7 +423,7 @@ function importAttendanceFiles() {
       if (parsed.matchedMember) touchedMembers.add(parsed.matchedMember);
       file.moveTo(processed);
       logRows.push([new Date(), name, '成功',
-        `${parsed.name} / ${parsed.year}年度 ${parsed.month}月 / 総残業${parsed.overtime}h / 有休${parsed.leaveDays}日` +
+        `${parsed.name} / ${parsed.year}年度 ${parsed.month}月 / 残業${parsed.overtime}h / 有休${parsed.leaveDays}日` +
         (parsed.matchedMember ? '' : '（「メンバー設定」に氏名が見つからず有休は反映されていません）')]);
     } catch (err) {
       file.moveTo(errorF);
@@ -468,7 +468,7 @@ function checkCompleteness_(touchedYearMonths) {
   return out;
 }
 
-/* ─── 1ファイルを解析し、氏名・年月・総残業時間・有休取得日数を取り出す ─── */
+/* ─── 1ファイルを解析し、氏名・年月・申請承認済残業時間・有休取得日数を取り出す ─── */
 function parseAttendanceFile_(file) {
   const values = readXlsxAsValues_(file);
 
@@ -496,9 +496,9 @@ function parseAttendanceFile_(file) {
   const year  = Number(dateMatch[1]);
   const month = Number(dateMatch[2]);
 
-  const overtime  = Number(labelMap['総残業時間']);
+  const overtime  = Number(labelMap['申請承認済残業時間']); // ⑬ 総残業時間ではなく申請承認済の値を使う（P7セル相当）
   const leaveDays = Number(labelMap['有休取得日数']);
-  if (isNaN(overtime))  throw new Error('「総残業時間」の値が読み取れませんでした');
+  if (isNaN(overtime))  throw new Error('「申請承認済残業時間」の値が読み取れませんでした');
   if (isNaN(leaveDays)) throw new Error('「有休取得日数」の値が読み取れませんでした');
 
   const fiscalYear = month >= 4 ? year : year - 1;      // 4月始まりの年度
@@ -538,7 +538,7 @@ function withRetry_(fn) {
   }
 }
 
-/* ─── ⑪ 「取込データ（月別）」から、メンバーごとの月別総残業時間を組み立てる ─── */
+/* ─── ⑪ 「取込データ（月別）」から、メンバーごとの月別残業時間（申請承認済）を組み立てる ─── */
 // 戻り値: { "氏名": { "2026": [12ヶ月分(h) or null, ...], "2027": [...], "2028": [...] }, ... }
 // 手入力時代の月（取込データに存在しない月）はnullのまま＝グラフ側で欠損として扱う
 function readMemberOvertime_() {
@@ -546,7 +546,7 @@ function readMemberOvertime_() {
   if (!sheet) return {};
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return {};
-  const rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues(); // 氏名,年度,月,総残業時間(h)
+  const rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues(); // 氏名,年度,月,残業時間(申請承認済,h)
   const out = {};
   rows.forEach(r => {
     const name = String(r[0] || '').trim();
@@ -574,7 +574,7 @@ function upsertImportTrack_(parsed, fileName) {
   const sheet = getOrCreate_(SHEET_IMPORT_TRACK);
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, 7)
-      .setValues([['氏名', '年度', '月', '総残業時間(h)', '有休取得日数', '取込日時', 'ファイル名']])
+      .setValues([['氏名', '年度', '月', '申請承認済残業時間(h)', '有休取得日数', '取込日時', 'ファイル名']])
       .setFontWeight('bold').setBackground('#f1f5f9');
     sheet.setFrozenRows(1);
   }
