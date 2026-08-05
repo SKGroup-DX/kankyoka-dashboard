@@ -1,8 +1,9 @@
 // ============================================================
-// 環境2課 中期経営計画ダッシュボード — データ保存スクリプト v2
+// 環境2課 中期経営計画ダッシュボード — データ保存スクリプト v3
 // 更新内容:
 //   ⑥ パスワードハッシュをスプレッドシートで管理
 //   ⑧ 保存のたびにバックアップ履歴を記録（最新30件）
+//   ⑩ 勤怠データ（Excel）のGoogleドライブ自動取込
 // ============================================================
 
 const SHEET_JSON     = 'ダッシュボードデータ';
@@ -313,4 +314,296 @@ function getOrCreate_(name) {
 }
 function ok_(text) {
   return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+// ⑩ 勤怠データ自動取込（Googleドライブ連携）
+// 「勤怠データ取込」フォルダに勤怠システム出力のExcel(.xlsx)をドロップすると、
+// ファイル内の「総残業時間」「有休取得日数」を読み取り、
+//   - 残業実績（全メンバー分をその月で合算）→ ダッシュボードのactualDataへ
+//   - 有休取得数（メンバーごと）→「メンバー設定」シートD列へ
+// を自動反映する。処理済みファイルは自動でサブフォルダへ移動。
+//
+// 【事前準備（初回のみ、Apps Scriptエディタで実施）】
+//   左メニュー「サービス」の＋ボタン → 「Drive API」を追加（識別子: Drive）
+//   これを行わないと下記コードは動作しない（Driveが未定義というエラーになる）
+// ============================================================
+const IMPORT_FOLDER_NAME    = '勤怠データ取込';
+const PROCESSED_FOLDER_NAME = '処理済み';
+const ERROR_FOLDER_NAME     = 'エラー';
+const SHEET_IMPORT_TRACK    = '取込データ（月別）';
+const SHEET_IMPORT_LOG      = '取込ログ';
+const VALID_ACTUAL_YEARS    = ['2026', '2027', '2028']; // actualDataで管理している残業実績の対象年度
+
+/* ─── スプレッドシートを開いたときに操作用メニューを追加 ─── */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('勤怠データ取込')
+    .addItem('今すぐ取込む', 'importAttendanceFiles')
+    .addItem('取込フォルダのURLを確認（初回はここで作成されます）', 'showImportFolderUrl_')
+    .addItem('自動実行（1日1回・6時頃）を有効化', 'setupImportTrigger')
+    .addToUi();
+}
+
+/* ─── 毎日1回の自動実行トリガーを作成（すでにあれば何もしない） ─── */
+function setupImportTrigger() {
+  const exists = ScriptApp.getProjectTriggers()
+    .some(t => t.getHandlerFunction() === 'importAttendanceFiles');
+  if (exists) {
+    SpreadsheetApp.getUi().alert('すでに自動実行は設定されています（毎日6時頃に実行）');
+    return;
+  }
+  ScriptApp.newTrigger('importAttendanceFiles')
+    .timeBased().everyDays(1).atHour(6).nearMinute(0).inTimezone('Asia/Tokyo')
+    .create();
+  SpreadsheetApp.getUi().alert('毎日6時頃に自動取込を実行するよう設定しました');
+}
+
+/* ─── 取込フォルダ（なければ作成）を取得。処理済み/エラー用の子フォルダも用意 ─── */
+function getImportFolders_() {
+  const ssFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  const parents = ssFile.getParents();
+  const parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+  const getOrCreateChild = (base, name) => {
+    const it = base.getFoldersByName(name);
+    return it.hasNext() ? it.next() : base.createFolder(name);
+  };
+  const inbox     = getOrCreateChild(parent, IMPORT_FOLDER_NAME);
+  const processed = getOrCreateChild(inbox, PROCESSED_FOLDER_NAME);
+  const errorF    = getOrCreateChild(inbox, ERROR_FOLDER_NAME);
+  return { inbox, processed, errorF };
+}
+
+function showImportFolderUrl_() {
+  const { inbox } = getImportFolders_();
+  SpreadsheetApp.getUi().alert('取込フォルダ:\n' + inbox.getUrl());
+}
+
+/* ─── メイン: 取込フォルダ直下のExcelファイルを処理する（手動メニュー／自動トリガー共通） ─── */
+function importAttendanceFiles() {
+  if (typeof Drive === 'undefined') {
+    writeImportLog_([[new Date(), '(設定エラー)', 'エラー',
+      'Drive APIが未設定です。Apps Scriptエディタの「サービス」から Drive API を追加してください。']]);
+    return;
+  }
+
+  const { inbox, processed, errorF } = getImportFolders_();
+  const files = inbox.getFiles(); // サブフォルダ（処理済み/エラー）は対象外
+  const logRows = [];
+  const touchedYearMonths = new Set(); // "年度-月インデックス"
+  const touchedMembers    = new Set();
+  let count = 0;
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const name = file.getName();
+    if (!/\.xlsx$/i.test(name)) continue;
+    count++;
+    try {
+      const parsed = parseAttendanceFile_(file);
+      upsertImportTrack_(parsed, name);
+      touchedYearMonths.add(parsed.year + '-' + parsed.monthIdx);
+      if (parsed.matchedMember) touchedMembers.add(parsed.matchedMember);
+      file.moveTo(processed);
+      logRows.push([new Date(), name, '成功',
+        `${parsed.name} / ${parsed.year}年度 ${parsed.month}月 / 総残業${parsed.overtime}h / 有休${parsed.leaveDays}日` +
+        (parsed.matchedMember ? '' : '（「メンバー設定」に氏名が見つからず有休は反映されていません）')]);
+    } catch (err) {
+      file.moveTo(errorF);
+      logRows.push([new Date(), name, 'エラー', err.message]);
+    }
+  }
+
+  if (count === 0) {
+    writeImportLog_([[new Date(), '(対象ファイルなし)', '情報', '取込フォルダにxlsxファイルがありませんでした']]);
+    return;
+  }
+
+  recalcFromTrack_(touchedYearMonths, touchedMembers);
+  logRows.push(...checkCompleteness_(touchedYearMonths));
+  writeImportLog_(logRows);
+}
+
+/* ─── 今回取込んだ年度・月について、「メンバー設定」に対して未取込のメンバーがいないか確認 ─── */
+// アップし忘れがあっても合計が黙って少なくなるだけになるのを防ぐため、警告として出す
+function checkCompleteness_(touchedYearMonths) {
+  const roster = readRoster_();
+  if (!roster.length) return [];
+  const trackSheet = getOrCreate_(SHEET_IMPORT_TRACK);
+  const lastRow = trackSheet.getLastRow();
+  const rows = lastRow >= 2 ? trackSheet.getRange(2, 1, lastRow - 1, 3).getValues() : []; // 氏名,年度,月
+
+  const out = [];
+  touchedYearMonths.forEach(key => {
+    const [year, idxStr] = key.split('-');
+    const monthIdx = Number(idxStr);
+    const month = monthIdx <= 8 ? monthIdx + 4 : monthIdx - 8; // 0=4月...11=3月 → カレンダー月
+    const present = new Set(
+      rows.filter(r => String(r[1]) === year && Number(r[2]) === month).map(r => r[0])
+    );
+    const missing = roster.filter(m => !present.has(m.name)).map(m => m.name);
+    if (missing.length) {
+      out.push([new Date(), '(未取込チェック)', '情報',
+        `${year}年度 ${month}月: 未取込のメンバーが${missing.length}名います → ${missing.join('、')}`]);
+    }
+  });
+  return out;
+}
+
+/* ─── 1ファイルを解析し、氏名・年月・総残業時間・有休取得日数を取り出す ─── */
+function parseAttendanceFile_(file) {
+  const values = readXlsxAsValues_(file);
+
+  // 5〜10行目（0-indexで4〜9）はラベルと値が2列ずつ交互に並ぶ構造
+  const labelMap = {};
+  for (let r = 4; r <= 9 && r < values.length; r++) {
+    const row = values[r] || [];
+    for (let c = 0; c + 1 < row.length; c += 2) {
+      const label = String(row[c] || '').trim();
+      if (label) labelMap[label] = row[c + 1];
+    }
+  }
+
+  // 2行目: 「名前 ： 阿部 凌太」「2026年7月」のように1セルに結合されている
+  const row2 = (values[1] || []).map(v => String(v || ''));
+  const nameCell  = row2.find(v => v.indexOf('名前') !== -1) || '';
+  const nameMatch = nameCell.match(/名前\s*[:：]\s*(.+)/);
+  const dateCell  = row2.find(v => /\d{4}年\d{1,2}月/.test(v)) || '';
+  const dateMatch = dateCell.match(/(\d{4})年(\d{1,2})月/);
+
+  if (!nameMatch || !dateMatch) {
+    throw new Error('氏名または対象年月が読み取れませんでした（ファイル形式が想定と異なる可能性があります）');
+  }
+  const name  = nameMatch[1].trim();
+  const year  = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]);
+
+  const overtime  = Number(labelMap['総残業時間']);
+  const leaveDays = Number(labelMap['有休取得日数']);
+  if (isNaN(overtime))  throw new Error('「総残業時間」の値が読み取れませんでした');
+  if (isNaN(leaveDays)) throw new Error('「有休取得日数」の値が読み取れませんでした');
+
+  const fiscalYear = month >= 4 ? year : year - 1;      // 4月始まりの年度
+  const monthIdx   = month >= 4 ? month - 4 : month + 8; // 0=4月...11=3月（ダッシュボードのMONTHSと同順）
+
+  return { name, year: fiscalYear, month, monthIdx, overtime, leaveDays,
+    matchedMember: findRosterMemberName_(name) };
+}
+
+/* ─── xlsxをGoogleスプレッドシートへ一時変換してセル値を読み取る（読了後は即削除） ─── */
+function readXlsxAsValues_(file) {
+  const tmp = Drive.Files.copy(
+    { name: '__tmp_import_' + file.getId(), mimeType: MimeType.GOOGLE_SHEETS },
+    file.getId()
+  );
+  try {
+    const ss = SpreadsheetApp.openById(tmp.id);
+    return ss.getSheets()[0].getDataRange().getValues();
+  } finally {
+    Drive.Files.remove(tmp.id);
+  }
+}
+
+/* ─── 「メンバー設定」シートの氏名と突合（全角/半角スペースの差異は無視） ─── */
+function findRosterMemberName_(rawName) {
+  const norm = s => String(s || '').replace(/[\s　]/g, '');
+  const target = norm(rawName);
+  const hit = readRoster_().find(m => norm(m.name) === target);
+  return hit ? hit.name : null;
+}
+
+/* ─── 「取込データ（月別）」シートへ反映。同一氏名+年度+月の行は上書き（再取込・修正に対応） ─── */
+function upsertImportTrack_(parsed, fileName) {
+  const sheet = getOrCreate_(SHEET_IMPORT_TRACK);
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 7)
+      .setValues([['氏名', '年度', '月', '総残業時間(h)', '有休取得日数', '取込日時', 'ファイル名']])
+      .setFontWeight('bold').setBackground('#f1f5f9');
+    sheet.setFrozenRows(1);
+  }
+  const memberKey = parsed.matchedMember || parsed.name;
+  const key = memberKey + '|' + parsed.year + '|' + parsed.month;
+  let targetRow = -1;
+  const lastRow = sheet.getLastRow();
+  if (lastRow >= 2) {
+    const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+    for (let i = 0; i < data.length; i++) {
+      if ((data[i][0] + '|' + data[i][1] + '|' + data[i][2]) === key) { targetRow = i + 2; break; }
+    }
+  }
+  const rowVals = [memberKey, parsed.year, parsed.month, parsed.overtime, parsed.leaveDays,
+    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss'), fileName];
+  const row = targetRow === -1 ? sheet.getLastRow() + 1 : targetRow;
+  sheet.getRange(row, 1, 1, rowVals.length).setValues([rowVals]);
+}
+
+/* ─── 「取込データ（月別）」を集計し、残業実績（全社）・メンバー取得数（個人）へ反映 ─── */
+function recalcFromTrack_(touchedYearMonths, touchedMembers) {
+  const trackSheet = getOrCreate_(SHEET_IMPORT_TRACK);
+  const lastRow = trackSheet.getLastRow();
+  if (lastRow < 2) return;
+  const rows = trackSheet.getRange(2, 1, lastRow - 1, 5).getValues(); // 氏名,年度,月,残業,有休
+
+  const jsonSheet = getOrCreate_(SHEET_JSON);
+  const raw  = jsonSheet.getRange('A1').getValue();
+  const data = raw ? JSON.parse(raw) : {};
+  data.actualData = data.actualData || {};
+  VALID_ACTUAL_YEARS.forEach(y => { if (!data.actualData[y]) data.actualData[y] = new Array(12).fill(null); });
+
+  // ① 残業実績: 該当年度・月について全メンバー分を合算して上書き
+  touchedYearMonths.forEach(key => {
+    const [year, idxStr] = key.split('-');
+    const monthIdx = Number(idxStr);
+    if (VALID_ACTUAL_YEARS.indexOf(year) === -1) return; // 対象外年度はスキップ（残業実績グラフの管理外）
+    let sum = 0, any = false;
+    rows.forEach(r => {
+      const rMonthIdx = r[2] >= 4 ? r[2] - 4 : r[2] + 8;
+      if (String(r[1]) === year && rMonthIdx === monthIdx) { sum += Number(r[3]) || 0; any = true; }
+    });
+    if (any) data.actualData[year][monthIdx] = Math.round(sum * 100) / 100;
+  });
+
+  // ② 有休取得数: 「メンバー設定」シートD列を、当該メンバーの今年度内合計で上書き
+  const now = new Date();
+  const curFiscalYear = String(now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1);
+  const rosterSheet = getOrCreate_(SHEET_ROSTER);
+  const rLast = rosterSheet.getLastRow();
+  if (rLast >= 2 && touchedMembers.size) {
+    const rosterVals = rosterSheet.getRange(2, 1, rLast - 1, 4).getValues();
+    touchedMembers.forEach(memberName => {
+      let total = 0;
+      rows.forEach(r => { if (r[0] === memberName && String(r[1]) === curFiscalYear) total += Number(r[4]) || 0; });
+      for (let i = 0; i < rosterVals.length; i++) {
+        if (rosterVals[i][0] === memberName) {
+          rosterSheet.getRange(i + 2, 4).setValue(Math.round(total * 10) / 10);
+          break;
+        }
+      }
+    });
+  }
+
+  const json = JSON.stringify(data);
+  jsonSheet.getRange('A1').setValue(json);
+  jsonSheet.getRange('B1').setValue(Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss'));
+  jsonSheet.getRange('C1').setValue('最終保存日時（勤怠データ自動取込）');
+  saveBackup_(json);
+  writeOvertimeSheet_(data);
+}
+
+/* ─── 取込ログシートへ追記（最新が上に来るよう先頭挿入、最大500件保持） ─── */
+function writeImportLog_(rows) {
+  const sheet = getOrCreate_(SHEET_IMPORT_LOG);
+  if (sheet.getRange('A1').getValue() !== '取込日時') {
+    sheet.getRange('A1:D1').setValues([['取込日時', 'ファイル名', '結果', '詳細']])
+      .setFontWeight('bold').setBackground('#f1f5f9');
+    sheet.setFrozenRows(1);
+  }
+  rows.forEach(r => {
+    sheet.insertRowAfter(1);
+    sheet.getRange(2, 1, 1, 4).setValues([r]);
+    const cell = sheet.getRange(2, 3);
+    cell.setBackground(r[2] === '成功' ? '#dcfce7' : r[2] === 'エラー' ? '#fee2e2' : '#f1f5f9');
+  });
+  const last = sheet.getLastRow();
+  if (last > 501) sheet.deleteRows(502, last - 501);
 }
