@@ -414,6 +414,7 @@ function importAttendanceFiles() {
       file.moveTo(errorF);
       logRows.push([new Date(), name, 'エラー', err.message]);
     }
+    Utilities.sleep(400); // Drive APIのレート制限対策: 連続実行の間隔を空ける
   }
 
   if (count === 0) {
@@ -494,15 +495,31 @@ function parseAttendanceFile_(file) {
 
 /* ─── xlsxをGoogleスプレッドシートへ一時変換してセル値を読み取る（読了後は即削除） ─── */
 function readXlsxAsValues_(file) {
-  const tmp = Drive.Files.copy(
+  const tmp = withRetry_(() => Drive.Files.copy(
     { name: '__tmp_import_' + file.getId(), mimeType: MimeType.GOOGLE_SHEETS },
     file.getId()
-  );
+  ));
   try {
-    const ss = SpreadsheetApp.openById(tmp.id);
+    const ss = withRetry_(() => SpreadsheetApp.openById(tmp.id));
     return ss.getSheets()[0].getDataRange().getValues();
   } finally {
-    Drive.Files.remove(tmp.id);
+    try { withRetry_(() => Drive.Files.remove(tmp.id)); }
+    catch (e) { /* 一時ファイルの削除失敗は無視（ドライブのゴミ箱に残るのみで実害なし） */ }
+  }
+}
+
+/* ─── レート制限等の一時的なエラーを、待機を挟みつつ最大5回まで自動リトライする ─── */
+function withRetry_(fn) {
+  const maxAttempts = 5, baseDelayMs = 1000;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return fn();
+    } catch (err) {
+      const msg = String((err && err.message) || err);
+      const retryable = /rate limit|quota|backend error|internal error|timeout/i.test(msg);
+      if (!retryable || attempt === maxAttempts) throw err;
+      Utilities.sleep(baseDelayMs * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 500));
+    }
   }
 }
 
