@@ -1062,6 +1062,8 @@ function toggleMemberOtPanel(){
   memberOtPanelOpen=!memberOtPanelOpen;
   document.getElementById('memberOtCard')?.classList.toggle('mobile-open',memberOtPanelOpen);
   document.getElementById('memberOtChevron')?.classList.toggle('open',memberOtPanelOpen);
+  // ⑭ 開いた瞬間に、それまでスキップされていたグラフ描画を行う
+  if(memberOtPanelOpen) renderMemberOtChart();
 }
 /* ═══ アラート確認済み管理 ═══ */
 const DISMISSED_KEY = 'kankyoka_dismissed_alerts';
@@ -1324,6 +1326,10 @@ function setMemberOtYear(y){
   selMemberOtYear=y; renderMemberOtYearBtns(); renderMemberOtChart();
 }
 function renderMemberOtChart(){
+  // ⑭ モバイルで折りたたまれている間はChart.js構築を丸ごとスキップ（初期表示を軽くする）。
+  // パネルを開いた瞬間（toggleMemberOtPanel）に改めて呼び直され、その時に描画される。
+  const card = document.getElementById("memberOtCard");
+  if(card && getComputedStyle(card).display==="none") return;
   const data = (memberOvertime[selMemberOtName]||{})[selMemberOtYear] || new Array(12).fill(null);
   const hasData = data.some(v=>v!=null);
   const sub = document.getElementById("memberOtCardSub");
