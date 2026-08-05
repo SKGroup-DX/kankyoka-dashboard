@@ -389,6 +389,21 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
       </div>
     </div>
 
+    <!-- メンバー別 残業推移 -->
+    <div class="card" id="memberOtCard">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:3px;flex-wrap:wrap;gap:4px">
+        <div>
+          <div class="card-title">メンバー別 残業推移</div>
+          <div class="card-sub" id="memberOtCardSub">勤怠データ自動取込で反映された月のみ表示されます</div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <select id="memberOtSel" onchange="onMemberOtSelChange()"></select>
+          <div class="btn-group" id="memberOtYearBtns"></div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:200px"><canvas id="memberOtChart"></canvas></div>
+    </div>
+
     <!-- 売上KPI -->
     <div class="kpi-grid" id="salesKpiGrid" style="grid-template-columns:repeat(3,1fr)"></div>
 
@@ -692,6 +707,7 @@ function mkInitTargets(){ return {
 let salesTargets = mkInitTargets();
 let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
 let groups     = [];
+let memberOvertime = {}; // ⑪ メンバー別残業実績（取込データ（月別）由来）: {氏名:{年度:[12ヶ月分h or null]}}
 let gasUrl     = '';
 let saveTimer  = null;
 let pendingSave = false; // ⑤ デバウンス待ち保存が残っているか（タブを閉じる際のフラッシュ判定用）
@@ -768,6 +784,7 @@ function applyData(d){
   if(d.members&&Array.isArray(d.members))
     members=d.members.map(m=>({...m,takenMonths:m.takenMonths||new Array(12).fill(0),group:m.group||''}));
   if(d.groups&&Array.isArray(d.groups)) groups=d.groups;
+  if(d.memberOvertime&&typeof d.memberOvertime==='object') memberOvertime=d.memberOvertime;
   if(d.salesData){
     const sy=mkInitSales();
     ['2025','2026','2027','2028'].forEach(k=>{
@@ -1255,6 +1272,64 @@ function renderMemberChart(){
 function refreshMember(){
   renderKPI(); renderAlerts(); renderMemberChart();
   renderInputTable();
+}
+
+/* ═══ ⑪ メンバー別 残業推移 ═══ */
+let selMemberOtName = null;
+let selMemberOtYear  = String(FISCAL_YEAR);
+let memberOtChartInst = null;
+function renderMemberOtSelect(){
+  const el=document.getElementById("memberOtSel"); if(!el) return;
+  const cur=selMemberOtName;
+  const names=members.map(m=>m.name);
+  el.innerHTML=names.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  selMemberOtName = names.includes(cur) ? cur : (names[0]||null);
+  if(selMemberOtName) el.value=selMemberOtName;
+}
+function onMemberOtSelChange(){
+  selMemberOtName=document.getElementById("memberOtSel").value;
+  renderMemberOtChart();
+}
+function renderMemberOtYearBtns(){
+  document.getElementById("memberOtYearBtns").innerHTML=KEYS.map(k=>`
+    <button class="yr-btn${k===selMemberOtYear?" active":""}"
+      ${k===selMemberOtYear?`style="background:${OT_LINE_COLORS[k]};border-color:${OT_LINE_COLORS[k]}"`:""}
+      onclick="setMemberOtYear('${k}')">${k}年度</button>`).join("");
+}
+function setMemberOtYear(y){
+  selMemberOtYear=y; renderMemberOtYearBtns(); renderMemberOtChart();
+}
+function renderMemberOtChart(){
+  const data = (memberOvertime[selMemberOtName]||{})[selMemberOtYear] || new Array(12).fill(null);
+  const hasData = data.some(v=>v!=null);
+  const sub = document.getElementById("memberOtCardSub");
+  sub.textContent = hasData
+    ? "勤怠データ自動取込で反映された月のみ表示（欠損月は空白）"
+    : `${selMemberOtYear}年度は${selMemberOtName?escapeHtml(selMemberOtName)+"さんの":""}取込データがまだありません`;
+  const tickColors=MONTHS.map((_,i)=>i===FISCAL_IDX?"#EAB308":"#64748b");
+  if(memberOtChartInst) memberOtChartInst.destroy();
+  memberOtChartInst=new Chart(document.getElementById("memberOtChart"),{
+    type:"line",
+    data:{ labels:MONTHS, datasets:[
+      {label:(selMemberOtName||"")+" 残業実績",data,borderColor:"#185FA5",backgroundColor:"transparent",
+        borderWidth:2.5,pointRadius:3,pointBackgroundColor:"#185FA5",spanGaps:false}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label(ctx){ const v=ctx.raw; return v==null?"データなし":"残業: "+Number(v).toFixed(1)+"h"; },
+          title(items){ return MONTHS[items[0].dataIndex]; }
+        }}
+      },
+      scales:{
+        x:{ticks:{font:{size:10},color:tickColors,autoSkip:false,maxRotation:0,
+            callback(val,i){return i===FISCAL_IDX?"▼"+MONTHS[i]:MONTHS[i];}},grid:{color:"#f1f5f9"}},
+        y:{beginAtZero:true,ticks:{font:{size:10},color:"#64748b",callback:v=>v+"h"},grid:{color:"#f1f5f9"}}
+      }
+    }
+  });
 }
 
 /* ═══ サマリーテーブル ═══ */
@@ -1923,6 +1998,7 @@ function renderAll(){
   renderTodayBadge(); renderKPI(); renderAlerts();
   renderYearBtns(); renderOTLegend(); renderOTChart(); renderProgress();
   renderMemberChart();
+  renderMemberOtSelect(); renderMemberOtYearBtns(); renderMemberOtChart();
   renderSalesYearBtns(); renderSalesLegend(); renderSalesChart(); renderSalesKPI(); renderSalesSummary();
   renderSummaryTable();
   updateGroupSelects();

@@ -38,6 +38,8 @@ function doGet(e) {
     const data  = json ? JSON.parse(json) : {};
     // ⑨ メンバー設定シートの読込に失敗してもメインデータは返す（機能を分離してダッシュボード全体を落とさない）
     try { data.roster = readRoster_(); } catch (e) { /* ロースター読込失敗時はメインデータのみ返す */ }
+    // ⑪ メンバー別の残業実績（取込データ（月別）由来、あれば返す。失敗してもメインデータは返す）
+    try { data.memberOvertime = readMemberOvertime_(); } catch (e) { /* 読込失敗時はメインデータのみ返す */ }
     return ok_(JSON.stringify(data));
   } catch (err) {
     return ok_(JSON.stringify({ error: err.message }));
@@ -502,6 +504,29 @@ function readXlsxAsValues_(file) {
   } finally {
     Drive.Files.remove(tmp.id);
   }
+}
+
+/* ─── ⑪ 「取込データ（月別）」から、メンバーごとの月別総残業時間を組み立てる ─── */
+// 戻り値: { "氏名": { "2026": [12ヶ月分(h) or null, ...], "2027": [...], "2028": [...] }, ... }
+// 手入力時代の月（取込データに存在しない月）はnullのまま＝グラフ側で欠損として扱う
+function readMemberOvertime_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_IMPORT_TRACK);
+  if (!sheet) return {};
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return {};
+  const rows = sheet.getRange(2, 1, lastRow - 1, 4).getValues(); // 氏名,年度,月,総残業時間(h)
+  const out = {};
+  rows.forEach(r => {
+    const name = String(r[0] || '').trim();
+    const year = String(r[1]);
+    const month = Number(r[2]);
+    if (!name || VALID_ACTUAL_YEARS.indexOf(year) === -1) return;
+    const monthIdx = month >= 4 ? month - 4 : month + 8; // 0=4月...11=3月
+    if (!out[name]) out[name] = {};
+    if (!out[name][year]) out[name][year] = new Array(12).fill(null);
+    out[name][year][monthIdx] = Number(r[3]) || 0;
+  });
+  return out;
 }
 
 /* ─── 「メンバー設定」シートの氏名と突合（全角/半角スペースの差異は無視） ─── */
