@@ -725,6 +725,7 @@ let salesTargets = mkInitTargets();
 let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
 let groups     = [];
 let memberOvertime = {}; // ⑪ メンバー別残業実績（取込データ（月別）由来）: {氏名:{年度:[12ヶ月分h or null]}}
+let gasDataLoaded = false; // ⑮ GASからの初回取得が完了したか（未完了時は「データなし」と「読込中」を区別する）
 let gasUrl     = '';
 let saveTimer  = null;
 let pendingSave = false; // ⑤ デバウンス待ち保存が残っているか（タブを閉じる際のフラッシュ判定用）
@@ -749,7 +750,7 @@ async function fetchWithTimeout(url, opts={}, timeoutMs=15000){
 
 // ① データ保存（localStorage即時 + GAS遅延2秒デバウンス）
 function saveData(){
-  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups,salesData,salesTargets})); }catch(e){}
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups,salesData,salesTargets,memberOvertime})); }catch(e){}
   setSaveStatus('local');
   if(!gasUrl){ return; }
   clearTimeout(saveTimer);
@@ -866,6 +867,7 @@ async function loadFromGAS(){
     if(d.error || !(d.actualData||d.members)){ setSaveStatus('idle'); return false; }
     applyData(d);
     if(Array.isArray(d.roster)) applyRoster(d.roster);
+    gasDataLoaded = true; // ⑮ 以後は「データなし」を確定表示してよい（読込中と区別）
     // localStorageにも同期（salesTargetsが欠けている場合は現在の値を補完）
     const toStore = Object.assign({salesTargets}, d);
     try{ localStorage.setItem(STORE_KEY,JSON.stringify(toStore)); }catch(e){}
@@ -1335,7 +1337,9 @@ function renderMemberOtChart(){
   const sub = document.getElementById("memberOtCardSub");
   sub.textContent = hasData
     ? "勤怠データ自動取込で反映された月のみ表示（欠損月は空白）"
-    : `${selMemberOtYear}年度は${selMemberOtName?escapeHtml(selMemberOtName)+"さんの":""}取込データがまだありません`;
+    : !gasDataLoaded
+      ? "読込中…" // ⑮ サーバーからの取得が完了していないだけの場合、「データなし」と誤解させない
+      : `${selMemberOtYear}年度は${selMemberOtName?escapeHtml(selMemberOtName)+"さんの":""}取込データがまだありません`;
   const tickColors=MONTHS.map((_,i)=>i===FISCAL_IDX?"#EAB308":"#64748b");
   if(memberOtChartInst) memberOtChartInst.destroy();
   memberOtChartInst=new Chart(document.getElementById("memberOtChart"),{
