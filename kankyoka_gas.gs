@@ -359,6 +359,7 @@ function onOpen() {
     .addItem('今すぐ取込む', 'importAttendanceFiles')
     .addItem('取込フォルダのURLを確認（初回はここで作成されます）', 'showImportFolderUrl_')
     .addItem('残業時間集計シートのURLを確認（初回はここで作成されます）', 'showOvertimeMatrixUrl_')
+    .addItem('残業時間集計シートを今すぐ更新', 'rebuildOvertimeMatrixSheet_')
     .addItem('自動実行（1日1回・6時頃）を有効化', 'setupImportTrigger')
     .addToUi();
 }
@@ -434,6 +435,8 @@ function importAttendanceFiles() {
   }
 
   if (count === 0) {
+    // 新規ファイルがなくても、既存の取込データから集計シートだけは最新化しておく
+    try { writeOvertimeMatrixSheet_(); } catch (e) { /* 失敗しても「対象ファイルなし」のログ自体は出す */ }
     writeImportLog_([[new Date(), '(対象ファイルなし)', '情報', '取込フォルダにxlsxファイルがありませんでした']]);
     return;
   }
@@ -737,6 +740,16 @@ function getOrCreateOvertimeMatrixSheet_() {
 function showOvertimeMatrixUrl_() {
   const sheet = getOrCreateOvertimeMatrixSheet_();
   SpreadsheetApp.getUi().alert('残業時間集計シート:\n' + sheet.getParent().getUrl());
+}
+
+/* ─── 新規ファイルの取込を待たず、既存の「取込データ（月別）」から集計シートを再生成する ─── */
+function rebuildOvertimeMatrixSheet_() {
+  try {
+    writeOvertimeMatrixSheet_();
+    SpreadsheetApp.getUi().alert('残業時間集計シートを更新しました:\n' + getOrCreateOvertimeMatrixSheet_().getParent().getUrl());
+  } catch (e) {
+    SpreadsheetApp.getUi().alert('更新に失敗しました: ' + e.message);
+  }
 }
 
 /* ─── 取込ログシートへ追記（最新が上に来るよう先頭挿入、最大500件保持） ─── */
