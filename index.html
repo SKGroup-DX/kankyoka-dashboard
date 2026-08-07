@@ -2082,8 +2082,11 @@ async function init(){
   const ok = await loadFromGAS();
   if(ok){
     // 実績入力画面をすでに操作中の場合は、入力中のデータを上書きしないためここでは反映しない
+    // ⑲ loadFromGAS()が既にlocalStorageへ同期済みなので、ここでsaveData()は呼ばない。
+    // 呼ぶと未ログイン時は空のpinHashでGASへ書き戻そうとして毎回認証エラー（保存失敗表示）になり、
+    // PINの失敗カウントも消費してしまう（閲覧者が増えるほど管理者ログインのロックアウトに近づく）。
     const inputActive = document.getElementById('inputSection')?.classList.contains('active');
-    if(!inputActive){ saveData(); renderAll(); }
+    if(!inputActive){ renderAll(); }
   }
 }
 init();
