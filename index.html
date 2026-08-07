@@ -1330,7 +1330,8 @@ function showLeaveRemain(idx){
   const info=memberLeaveRemaining[m.name];
   document.getElementById("leaveRemainName").textContent=m.name;
   document.getElementById("leaveRemainBody").innerHTML = info
-    ? `<div style="font-size:28px;font-weight:700;color:#185FA5">${fmtQuarterHour(info.days)}<span style="font-size:13px;font-weight:600;color:#64748b">日</span></div>
+    ? `<div style="font-size:12px;font-weight:600;color:#64748b">有休残日数</div>
+       <div style="font-size:28px;font-weight:700;color:#185FA5;margin-top:2px">${fmtQuarterHour(info.days)}<span style="font-size:13px;font-weight:600;color:#64748b">日</span></div>
        <div style="font-size:11px;color:#94a3b8;margin-top:4px">${escapeHtml(info.asOf)}時点（勤怠データ取込より）</div>`
     : `<div style="font-size:12px;color:#94a3b8;padding:8px 0">取込データがまだありません</div>`;
   document.getElementById("leaveRemainModal").classList.add("open");
