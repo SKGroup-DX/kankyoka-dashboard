@@ -930,6 +930,13 @@ let otTargetVisible=false; // ① 目標値の推移はデフォルト非表示�
 /* ═══ ユーティリティ ═══ */
 const sumArr  = a=>a.reduce((s,v)=>s+(v??0),0);
 const f       = (v,d=1)=>v==null?"—":Number(v).toFixed(d);
+// ⑯ 残業時間は0.25h（15分）刻みの実測値。.toFixed(1)は0.25/0.75を四捨五入して不正確に見せるため、
+// 浮動小数の誤差だけ吸収し、末尾の余分な0は付けずに実際の値をそのまま表示する
+const fmtQuarterHour = v=>{
+  if(v==null) return "—";
+  const r=Math.round(v*100)/100;
+  return String(r);
+};
 const mTaken  = m=>sumArr(m.takenMonths);
 const achvPct = (t,d)=>d>0?Math.min(100,Math.round(t/d*100)):0;
 const barColor= p=>p>=80?"#185FA5":p>=50?"#854F0B":"#A32D2D";
@@ -1353,7 +1360,9 @@ function renderMemberOtChart(){
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{
-          label(ctx){ const v=ctx.raw; return v==null?"データなし":"残業: "+Number(v).toFixed(1)+"h"; },
+          // ⑯ .toFixed(1)は0.25h/0.75h刻みの値を四捨五入して不正確に見せてしまうため、
+          // 浮動小数の誤差だけ吸収し、実際の値（0.25h単位）をそのまま表示する
+          label(ctx){ const v=ctx.raw; return v==null?"データなし":"残業: "+fmtQuarterHour(v)+"h"; },
           title(items){ return MONTHS[items[0].dataIndex]; }
         }}
       },
