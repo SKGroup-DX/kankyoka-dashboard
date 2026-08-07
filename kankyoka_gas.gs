@@ -41,6 +41,8 @@ function doGet(e) {
     try { data.roster = readRoster_(); } catch (e) { /* ロースター読込失敗時はメインデータのみ返す */ }
     // ⑪ メンバー別の残業実績（取込データ（月別）由来、あれば返す。失敗してもメインデータは返す）
     try { data.memberOvertime = readMemberOvertime_(); } catch (e) { /* 読込失敗時はメインデータのみ返す */ }
+    // ⑱ メンバー別の直近取込月の有休残日数（あれば返す。失敗してもメインデータは返す）
+    try { data.memberLeaveRemaining = readMemberLeaveRemaining_(); } catch (e) { /* 読込失敗時はメインデータのみ返す */ }
     return ok_(JSON.stringify(data));
   } catch (err) {
     return ok_(JSON.stringify({ error: err.message }));
@@ -506,11 +508,14 @@ function parseAttendanceFile_(file) {
   const leaveDays = Number(labelMap['有休取得日数']);
   if (isNaN(overtime))  throw new Error('「申請承認済残業時間」の値が読み取れませんでした');
   if (isNaN(leaveDays)) throw new Error('「有休取得日数」の値が読み取れませんでした');
+  // ⑱ 有休残日数（T5セル相当）。将来ファイル形式が変わって読めなくても、取込自体は失敗させない
+  const leaveRemainRaw = Number(labelMap['有休残日数']);
+  const leaveRemaining = isNaN(leaveRemainRaw) ? null : leaveRemainRaw;
 
   const fiscalYear = month >= 4 ? year : year - 1;      // 4月始まりの年度
   const monthIdx   = month >= 4 ? month - 4 : month + 8; // 0=4月...11=3月（ダッシュボードのMONTHSと同順）
 
-  return { name, year: fiscalYear, month, monthIdx, overtime, leaveDays,
+  return { name, year: fiscalYear, month, monthIdx, overtime, leaveDays, leaveRemaining,
     matchedMember: findRosterMemberName_(name) };
 }
 
@@ -567,6 +572,31 @@ function readMemberOvertime_() {
   return out;
 }
 
+/* ─── ⑱ 「取込データ（月別）」から、メンバーごとの直近取込月の有休残日数を組み立てる ─── */
+// 戻り値: { "氏名": { days: 有休残日数, asOf: "2026/07" } }（メンバーごとに一番新しい取込月の値のみ）
+function readMemberLeaveRemaining_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_IMPORT_TRACK);
+  if (!sheet) return {};
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return {};
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 8) return {}; // 有休残日数列（H列）がまだない古いシート
+  const rows = sheet.getRange(2, 1, lastRow - 1, 8).getValues(); // 氏名,年度,月,残業,有休取得,取込日時,ファイル名,有休残日数
+  const latest = {}; // 氏名 -> {key, days}
+  rows.forEach(r => {
+    const name = String(r[0] || '').trim();
+    const days = r[7];
+    if (!name || days === '' || days == null) return;
+    const key = calendarYM_(r[1], r[2]);
+    if (!latest[name] || key > latest[name].key) latest[name] = { key, days: Number(days) };
+  });
+  const out = {};
+  Object.keys(latest).forEach(name => {
+    out[name] = { days: latest[name].days, asOf: ymLabel_(latest[name].key) };
+  });
+  return out;
+}
+
 /* ─── 「メンバー設定」シートの氏名と突合（全角/半角スペースの差異は無視） ─── */
 function findRosterMemberName_(rawName) {
   const norm = s => String(s || '').replace(/[\s　]/g, '');
@@ -579,10 +609,13 @@ function findRosterMemberName_(rawName) {
 function upsertImportTrack_(parsed, fileName) {
   const sheet = getOrCreate_(SHEET_IMPORT_TRACK);
   if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, 7)
-      .setValues([['氏名', '年度', '月', '申請承認済残業時間(h)', '有休取得日数', '取込日時', 'ファイル名']])
+    sheet.getRange(1, 1, 1, 8)
+      .setValues([['氏名', '年度', '月', '申請承認済残業時間(h)', '有休取得日数', '取込日時', 'ファイル名', '有休残日数']])
       .setFontWeight('bold').setBackground('#f1f5f9');
     sheet.setFrozenRows(1);
+  } else if (!sheet.getRange('H1').getValue()) {
+    // ⑱ 既存シート（有休残日数列がまだない）に後から列を追加。末尾に足すだけなので既存行のレイアウトは壊さない
+    sheet.getRange('H1').setValue('有休残日数').setFontWeight('bold').setBackground('#f1f5f9');
   }
   const memberKey = parsed.matchedMember || parsed.name;
   const key = memberKey + '|' + parsed.year + '|' + parsed.month;
@@ -595,7 +628,8 @@ function upsertImportTrack_(parsed, fileName) {
     }
   }
   const rowVals = [memberKey, parsed.year, parsed.month, parsed.overtime, parsed.leaveDays,
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss'), fileName];
+    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss'), fileName,
+    parsed.leaveRemaining ?? ''];
   const row = targetRow === -1 ? sheet.getLastRow() + 1 : targetRow;
   sheet.getRange(row, 1, 1, rowVals.length).setValues([rowVals]);
 }

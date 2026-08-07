@@ -174,7 +174,8 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .cbar-chart{width:100%}
 .cbar-row{display:flex;align-items:center;gap:5px;margin-bottom:3px}
 .cbar-row:hover .cbar-track{opacity:.85}
-.cbar-name{width:76px;font-size:11px;font-weight:600;color:#334155;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cbar-name{width:76px;font-size:11px;font-weight:600;color:#334155;text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.cbar-name:hover{text-decoration:underline}
 .cbar-track{flex:1;display:flex;height:14px;border-radius:3px;overflow:hidden}
 .cbar-taken{height:100%;flex-shrink:0;transition:width .3s}
 .cbar-remain{height:100%;flex-shrink:0;background:#dde3eb}
@@ -642,6 +643,16 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
     </div>
   </div>
 </div>
+<!-- ⑱ 有休残日数（メンバー名タップで表示） -->
+<div class="modal-bg" id="leaveRemainModal">
+  <div class="modal" style="width:280px;text-align:center">
+    <h3 id="leaveRemainName" style="margin-bottom:10px"></h3>
+    <div id="leaveRemainBody"></div>
+    <div class="modal-btns" style="justify-content:center;margin-top:14px">
+      <button class="btn" onclick="closeModal()">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ═══ 日付 ═══ */
@@ -725,6 +736,7 @@ let salesTargets = mkInitTargets();
 let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
 let groups     = [];
 let memberOvertime = {}; // ⑪ メンバー別残業実績（取込データ（月別）由来）: {氏名:{年度:[12ヶ月分h or null]}}
+let memberLeaveRemaining = {}; // ⑱ メンバー別 直近取込月の有休残日数: {氏名:{days,asOf}}
 let gasDataLoaded = false; // ⑮ GASからの初回取得が完了したか（未完了時は「データなし」と「読込中」を区別する）
 let gasUrl     = '';
 let saveTimer  = null;
@@ -750,7 +762,7 @@ async function fetchWithTimeout(url, opts={}, timeoutMs=15000){
 
 // ① データ保存（localStorage即時 + GAS遅延2秒デバウンス）
 function saveData(){
-  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups,salesData,salesTargets,memberOvertime})); }catch(e){}
+  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups,salesData,salesTargets,memberOvertime,memberLeaveRemaining})); }catch(e){}
   setSaveStatus('local');
   if(!gasUrl){ return; }
   clearTimeout(saveTimer);
@@ -803,6 +815,7 @@ function applyData(d){
     members=d.members.map(m=>({...m,takenMonths:m.takenMonths||new Array(12).fill(0),group:m.group||''}));
   if(d.groups&&Array.isArray(d.groups)) groups=d.groups;
   if(d.memberOvertime&&typeof d.memberOvertime==='object') memberOvertime=d.memberOvertime;
+  if(d.memberLeaveRemaining&&typeof d.memberLeaveRemaining==='object') memberLeaveRemaining=d.memberLeaveRemaining;
   if(d.salesData){
     const sy=mkInitSales();
     ['2025','2026','2027','2028'].forEach(k=>{
@@ -1282,8 +1295,9 @@ function renderMemberChart(){
       ?`<span class="cbar-bar-lbl" style="left:${tw}%;transform:translateY(-50%);color:${bc};font-size:9px;font-weight:700;padding-left:3px">${takenLbl}</span>`
       :'';
     // グループ名はダッシュボードには表示しない（絞り込みはgroupFilterSelのみで行う）
+    // ⑱ 氏名をタップすると直近取込月の有休残日数を表示（indexで参照し、氏名をonclick属性に直接埋め込まない）
     return `<div class="cbar-row" title="取得: ${takenLbl}日 / 付与: ${m.days}日（${m.achv}%）">
-      <div class="cbar-name">${escapeHtml(m.name)}</div>
+      <div class="cbar-name" onclick="showLeaveRemain(${m.idx})">${escapeHtml(m.name)}</div>
       <div class="cbar-wrap">
         <div class="cbar-track">
           <div class="cbar-taken"  style="width:${tw}%;background:${bc}"></div>
@@ -1308,6 +1322,18 @@ function renderMemberChart(){
 function refreshMember(){
   renderKPI(); renderAlerts(); renderMemberChart();
   renderInputTable();
+}
+
+/* ═══ ⑱ 有休残日数（メンバー名タップで表示） ═══ */
+function showLeaveRemain(idx){
+  const m=members[idx]; if(!m) return;
+  const info=memberLeaveRemaining[m.name];
+  document.getElementById("leaveRemainName").textContent=m.name;
+  document.getElementById("leaveRemainBody").innerHTML = info
+    ? `<div style="font-size:28px;font-weight:700;color:#185FA5">${fmtQuarterHour(info.days)}<span style="font-size:13px;font-weight:600;color:#64748b">日</span></div>
+       <div style="font-size:11px;color:#94a3b8;margin-top:4px">${escapeHtml(info.asOf)}時点（勤怠データ取込より）</div>`
+    : `<div style="font-size:12px;color:#94a3b8;padding:8px 0">取込データがまだありません</div>`;
+  document.getElementById("leaveRemainModal").classList.add("open");
 }
 
 /* ═══ ⑪ メンバー別 残業推移 ═══ */
