@@ -1276,13 +1276,13 @@ function renderMemberChart(){
     const rw=(Math.max(0,m.days-m.taken)/maxDays*100).toFixed(4);
     const ew=(Math.max(0,maxDays-m.days)/maxDays*100).toFixed(4);
     const bc=barColor(m.achv);
-    const gc=grpColor(m.group);
     // バー右端ラベル（取得バーの直後に数字）／ 整数はそのまま、0.5刻みの値は小数のまま表示
     const takenLbl=m.taken;
     const barLabel=m.taken>0
       ?`<span class="cbar-bar-lbl" style="left:${tw}%;transform:translateY(-50%);color:${bc};font-size:9px;font-weight:700;padding-left:3px">${takenLbl}</span>`
       :'';
-    return `<div class="cbar-row" title="取得: ${takenLbl}日 / 付与: ${m.days}日（${m.achv}%）${m.group?' / '+escapeHtml(m.group):''}">
+    // グループ名はダッシュボードには表示しない（絞り込みはgroupFilterSelのみで行う）
+    return `<div class="cbar-row" title="取得: ${takenLbl}日 / 付与: ${m.days}日（${m.achv}%）">
       <div class="cbar-name">${escapeHtml(m.name)}</div>
       <div class="cbar-wrap">
         <div class="cbar-track">
@@ -1294,7 +1294,6 @@ function renderMemberChart(){
       </div>
       <div class="cbar-pct" style="color:${bc}">${m.achv}%</div>
       <div class="cbar-days">${m.days}日</div>
-      ${m.group?`<span class="cbar-grp" style="background:${gc.bg};color:${gc.text}">${escapeHtml(m.group)}</span>`:''}
     </div>`;
   }).join('');
   const ticks=tvs.map((v,i)=>{
