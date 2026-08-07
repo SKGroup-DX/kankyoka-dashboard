@@ -358,6 +358,7 @@ function onOpen() {
     .createMenu('勤怠データ取込')
     .addItem('今すぐ取込む', 'importAttendanceFiles')
     .addItem('取込フォルダのURLを確認（初回はここで作成されます）', 'showImportFolderUrl_')
+    .addItem('残業時間集計シートのURLを確認（初回はここで作成されます）', 'showOvertimeMatrixUrl_')
     .addItem('自動実行（1日1回・6時頃）を有効化', 'setupImportTrigger')
     .addToUi();
 }
@@ -438,6 +439,8 @@ function importAttendanceFiles() {
   }
 
   recalcFromTrack_(touchedYearMonths, touchedMembers);
+  try { writeOvertimeMatrixSheet_(); }
+  catch (e) { logRows.push([new Date(), '(残業時間集計シート)', 'エラー', e.message]); }
   logRows.push(...checkCompleteness_(touchedYearMonths));
   writeImportLog_(logRows);
 }
@@ -646,6 +649,94 @@ function recalcFromTrack_(touchedYearMonths, touchedMembers) {
   jsonSheet.getRange('C1').setValue('最終保存日時（勤怠データ自動取込）');
   saveBackup_(json);
   writeOvertimeSheet_(data);
+}
+
+/* ─── ⑰ メンバー×月の残業時間まとめを別スプレッドシートへ書き出す ─── */
+// 「取込データ（月別）」の実データから、氏名を行・カレンダー月（2026/04〜、取込のある月のみ）を列とする
+// 一覧表を作り、ダッシュボードのスプレッドシートと同じフォルダ内の別ファイルへ丸ごと書き出す。
+const OVERTIME_MATRIX_FILE_NAME = '残業時間集計（メンバー別）';
+
+/* 年度・月（カレンダー月1-12）→ ソート・表示用のカレンダーYYYYMMキーに変換 */
+function calendarYM_(fiscalYear, month) {
+  const y = month >= 4 ? Number(fiscalYear) : Number(fiscalYear) + 1; // 1〜3月は次の calendar year
+  return y * 100 + Number(month);
+}
+function ymLabel_(key) {
+  const y = Math.floor(key / 100), m = key % 100;
+  return y + '/' + String(m).padStart(2, '0');
+}
+
+function writeOvertimeMatrixSheet_() {
+  const trackSheet = getOrCreate_(SHEET_IMPORT_TRACK);
+  const lastRow = trackSheet.getLastRow();
+  if (lastRow < 2) return; // 取込データがまだない場合は何もしない
+  const rows = trackSheet.getRange(2, 1, lastRow - 1, 4).getValues(); // 氏名,年度,月,残業時間(h)
+
+  // 取込のある月だけを収集し、カレンダー順（古い月→新しい月）に並べる
+  const monthKeySet = new Set();
+  rows.forEach(r => monthKeySet.add(calendarYM_(r[1], r[2])));
+  const monthKeys = Array.from(monthKeySet).sort((a, b) => a - b);
+  if (!monthKeys.length) return;
+
+  // 氏名 → 月キー → 残業時間 のマップ
+  const valueMap = {};
+  rows.forEach(r => {
+    const name = String(r[0] || '').trim();
+    if (!name) return;
+    if (!valueMap[name]) valueMap[name] = {};
+    valueMap[name][calendarYM_(r[1], r[2])] = Number(r[3]) || 0;
+  });
+
+  const roster = readRoster_(); // 表示順・所属は「メンバー設定」に従う
+  const header = ['氏名', '所属', ...monthKeys.map(ymLabel_)];
+  const dataRows = roster.map(m => {
+    const vals = valueMap[m.name] || {};
+    return [m.name, m.group || '', ...monthKeys.map(k => vals[k] ?? '')];
+  });
+  const totalRow = ['合計', '', ...monthKeys.map(k => {
+    let sum = 0, any = false;
+    roster.forEach(m => {
+      const v = (valueMap[m.name] || {})[k];
+      if (v != null) { sum += v; any = true; }
+    });
+    return any ? Math.round(sum * 100) / 100 : '';
+  })];
+
+  const sheet = getOrCreateOvertimeMatrixSheet_();
+  sheet.clearContents();
+  const all = [header, ...dataRows, totalRow];
+  sheet.getRange(1, 1, all.length, header.length).setValues(all);
+  sheet.getRange(1, 1, 1, header.length).setFontWeight('bold').setBackground('#f1f5f9');
+  sheet.getRange(all.length, 1, 1, header.length).setFontWeight('bold').setBackground('#eef2ff');
+  sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
+}
+
+/* ─── 残業時間集計用スプレッドシート（なければダッシュボードと同じフォルダに新規作成） ─── */
+function getOrCreateOvertimeMatrixSheet_() {
+  const ssFile = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId());
+  const parents = ssFile.getParents();
+  const parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
+
+  const existing = parent.getFilesByName(OVERTIME_MATRIX_FILE_NAME);
+  let ss;
+  if (existing.hasNext()) {
+    ss = SpreadsheetApp.openById(existing.next().getId());
+  } else {
+    ss = SpreadsheetApp.create(OVERTIME_MATRIX_FILE_NAME);
+    const file = DriveApp.getFileById(ss.getId());
+    parent.addFile(file);
+    // SpreadsheetApp.create()はマイドライブ直下に作成されるため、そこからは外す
+    try { DriveApp.getRootFolder().removeFile(file); } catch (e) { /* 権限等で外せなくても実害なし */ }
+  }
+  const sheet = ss.getSheets()[0];
+  if (sheet.getName() !== '残業時間') sheet.setName('残業時間');
+  return sheet;
+}
+
+function showOvertimeMatrixUrl_() {
+  const sheet = getOrCreateOvertimeMatrixSheet_();
+  SpreadsheetApp.getUi().alert('残業時間集計シート:\n' + sheet.getParent().getUrl());
 }
 
 /* ─── 取込ログシートへ追記（最新が上に来るよう先頭挿入、最大500件保持） ─── */

@@ -46,6 +46,8 @@ URL: https://kasuyakouta.github.io/kankyoka-dashboard/
 
 &nbsp;&nbsp;- \*\*メンバー別の残業推移\*\*はダッシュボードの「メンバー別 残業推移」カードでドロップダウン選択して表示。データは「取込データ（月別）」由来（doGetの`memberOvertime`）のため、自動取込より前の月は空欄になる
 
+&nbsp;&nbsp;- \*\*残業時間集計（メンバー別）\*\*という別のGoogleスプレッドシート（ダッシュボードのスプレッドシートと同じドライブフォルダ内）に、氏名×月（2026年4月〜、取込のある月のみ・毎月自動で列が増える）の一覧表を毎回の取込時に自動生成（`writeOvertimeMatrixSheet\_()`）。存在しなければ自動作成される
+
 \- 「ダッシュボードデータ」シートA1セルが過去に`{pinHash,payload:{...}}`という壊れた入れ子構造で保存されたことがあった(売上データ等が読めなくなる不具合の原因)。doGet/recalcFromTrack\_の`unwrapLegacyPayload\_()`が読込時に自動検出・修復する
 
 
