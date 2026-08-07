@@ -1005,7 +1005,7 @@ function renderKPI(){
     const delta=cur-prev, pct=Math.abs((delta/prev*100)).toFixed(1);
     const up=delta>0;
     const cls=up?"up-bad":"dn-good";
-    return `<div class="kpi-trend ${cls}">${up?"▲":"▼"} ${f(Math.abs(delta),1)}h（${pct}%）前月比</div>`;
+    return `<div class="kpi-trend ${cls}">${up?"▲":"▼"} ${fmtQuarterHour(Math.abs(delta))}h（${pct}%）前月比</div>`;
   }
   function achvTrendHTML(){
     const target=80, diff=avgAchv-target;
@@ -1095,7 +1095,7 @@ function renderAlerts(){
   const allAlerts=[];
   overO.forEach(o=>{
     const id=`ot_${o.year}_${o.month}`;
-    allAlerts.push({id,type:"danger",icon:"🔴",msg:`残業超過: ${o.year}年度 ${o.month} — 実績 ${f(o.actual)}h（目標 ${f(o.target)}h、超過 +${f(o.actual-o.target)}h）`});
+    allAlerts.push({id,type:"danger",icon:"🔴",msg:`残業超過: ${o.year}年度 ${o.month} — 実績 ${fmtQuarterHour(o.actual)}h（目標 ${fmtQuarterHour(o.target)}h、超過 +${fmtQuarterHour(o.actual-o.target)}h）`});
   });
   lowM.forEach(m=>{
     const t=mTaken(m);
@@ -1189,8 +1189,10 @@ function buildOTChartConfig(yc){
         tooltip:{
           callbacks:{
             label(ctx){
+              // ⑯ .toFixed(1)は0.25h/0.75h刻みの値を四捨五入して不正確に見せるため、
+              // 浮動小数の誤差だけ吸収するfmtQuarterHour()で実際の値をそのまま表示する
               const v=ctx.raw; if(v==null) return ctx.dataset.label+": —";
-              const base=ctx.dataset.label+": "+Number(v).toFixed(1)+"h";
+              const base=ctx.dataset.label+": "+fmtQuarterHour(v)+"h";
               // 実績行のみ目標比を追加
               const kMatch=KEYS.find(k=>ctx.dataset.label===k+"年度実績");
               if(!kMatch) return base;
@@ -1199,7 +1201,7 @@ function buildOTChartConfig(yc){
               if(tgt==null) return base;
               const diff=v-tgt, pct=(diff/tgt*100).toFixed(1);
               const mark=diff>0?"⚠️超過":"✅目標内";
-              return [base, `  目標: ${f(tgt)}h / 差分: ${diff>0?"+":""}${f(diff)}h（${pct}%） ${mark}`];
+              return [base, `  目標: ${fmtQuarterHour(tgt)}h / 差分: ${diff>0?"+":""}${fmtQuarterHour(diff)}h（${pct}%） ${mark}`];
             },
             title(items){ return MONTHS[items[0].dataIndex]+" の残業実績"; }
           }
@@ -1443,8 +1445,8 @@ function updateOTSummary(){
   const last=arrFindLastIndex(actualData[inputYear], v=>v!==null);
   const tgt=last>=0?sumArr(yc.tgt.slice(0,last+1).filter(v=>v!==null)):0;
   const ratio=tgt>0?(act/tgt*100).toFixed(1):null;
-  document.getElementById("actual_total").textContent=f(act,1)+" h";
-  document.getElementById("target_val").textContent=tgt>0?f(tgt,1)+" h（"+ent.length+"ヶ月）":"—";
+  document.getElementById("actual_total").textContent=fmtQuarterHour(act)+" h";
+  document.getElementById("target_val").textContent=tgt>0?fmtQuarterHour(tgt)+" h（"+ent.length+"ヶ月）":"—";
   const el=document.getElementById("achieve_val");
   el.textContent=ratio?ratio+"%":"—";
   el.style.color=ratio?(parseFloat(ratio)<=100?"#085041":"#A32D2D"):"#94a3b8";
