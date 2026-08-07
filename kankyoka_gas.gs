@@ -408,6 +408,8 @@ function importAttendanceFiles() {
     return;
   }
 
+  ensureImportTrackHeader_(); // ファイルが0件の回でも見出し（列構成）だけは常に最新化する
+
   const { inbox, processed, errorF } = getImportFolders_();
   const files = inbox.getFiles(); // サブフォルダ（処理済み/エラー）は対象外
   const logRows = [];
@@ -605,8 +607,8 @@ function findRosterMemberName_(rawName) {
   return hit ? hit.name : null;
 }
 
-/* ─── 「取込データ（月別）」シートへ反映。同一氏名+年度+月の行は上書き（再取込・修正に対応） ─── */
-function upsertImportTrack_(parsed, fileName) {
+/* ─── 「取込データ（月別）」シートの見出しを用意（新規作成／列追加）。ファイルの処理有無に関わらず毎回呼べる ─── */
+function ensureImportTrackHeader_() {
   const sheet = getOrCreate_(SHEET_IMPORT_TRACK);
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, 8)
@@ -617,6 +619,12 @@ function upsertImportTrack_(parsed, fileName) {
     // ⑱ 既存シート（有休残日数列がまだない）に後から列を追加。末尾に足すだけなので既存行のレイアウトは壊さない
     sheet.getRange('H1').setValue('有休残日数').setFontWeight('bold').setBackground('#f1f5f9');
   }
+  return sheet;
+}
+
+/* ─── 「取込データ（月別）」シートへ反映。同一氏名+年度+月の行は上書き（再取込・修正に対応） ─── */
+function upsertImportTrack_(parsed, fileName) {
+  const sheet = ensureImportTrackHeader_();
   const memberKey = parsed.matchedMember || parsed.name;
   const key = memberKey + '|' + parsed.year + '|' + parsed.month;
   let targetRow = -1;
