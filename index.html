@@ -1173,7 +1173,10 @@ function toggleOTTarget(){
 /* ═══ OTグラフ（③ 詳細ツールチップ付き） ═══ */
 function renderOTLegend(){
   const yc=getYC();
-  document.getElementById("otCardSub").textContent=`2025年度実績 vs ${selYear}年度目標（${yc.reduction}%削減）`;
+  // ⑲ 初回表示はローカルキャッシュ（前回訪問時点の値）のため、GAS確認完了までは
+  // 数値が更新される可能性があることを示す（表示速度を落とさず、古い値だと分かるように）
+  const checking = !gasDataLoaded ? '🔄 最新データ確認中… ／ ' : '';
+  document.getElementById("otCardSub").textContent=`${checking}2025年度実績 vs ${selYear}年度目標（${yc.reduction}%削減）`;
   document.getElementById("otLegend").innerHTML=`
     <div class="legend-item"><span class="legend-dash" style="border-color:${OT25_COLOR};border-top-width:1.25px"></span>2025実績</div>
     <div class="legend-item" onclick="toggleOTTarget()" title="タップで表示/非表示" style="cursor:pointer;${otTargetVisible?'':'opacity:.5'}">
