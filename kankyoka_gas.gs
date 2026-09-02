@@ -354,6 +354,13 @@ const SHEET_IMPORT_TRACK    = '取込データ（月別）';
 const SHEET_IMPORT_LOG      = '取込ログ';
 const VALID_ACTUAL_YEARS    = ['2026', '2027', '2028']; // actualDataで管理している残業実績の対象年度
 
+// ㉑ 売上データの自動反映元（別スプレッドシート）
+const SALES_SOURCE_SHEET_ID  = '1pvCvTXBPX28-DgzGmRQMTESUkFcBS_yfk_SWQmIcYgY';
+const SALES_SOURCE_TAB       = '実績_地域インフラ共創1課';
+const SALES_SOURCE_START_ROW = 3;  // この行が「4月」（以降12行で3月まで）
+const SALES_SOURCE_COL_UNIT2 = 37; // AK列
+const SALES_SOURCE_COL_UNIT3 = 38; // AL列
+
 /* ─── スプレッドシートを開いたときに操作用メニューを追加 ─── */
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -362,6 +369,7 @@ function onOpen() {
     .addItem('取込フォルダのURLを確認（初回はここで作成されます）', 'showImportFolderUrl_')
     .addItem('残業時間集計シートのURLを確認（初回はここで作成されます）', 'showOvertimeMatrixUrl_')
     .addItem('残業時間集計シートを今すぐ更新', 'rebuildOvertimeMatrixSheet_')
+    .addItem('売上データを今すぐ更新', 'rebuildSalesData_')
     .addItem('自動実行（1日1回・6時頃）を有効化', 'setupImportTrigger')
     .addToUi();
 }
@@ -410,6 +418,15 @@ function importAttendanceFiles() {
 
   ensureImportTrackHeader_(); // ファイルが0件の回でも見出し（列構成）だけは常に最新化する
 
+  // ㉑ 売上データも同じ日次トリガーに相乗りして自動反映（勤怠ファイルの有無に関わらず毎回実行）
+  const salesLogRows = [];
+  try {
+    const salesResult = importSalesData_();
+    salesLogRows.push([new Date(), '(売上データ取込)', '成功', salesResult]);
+  } catch (e) {
+    salesLogRows.push([new Date(), '(売上データ取込)', 'エラー', e.message]);
+  }
+
   const { inbox, processed, errorF } = getImportFolders_();
   const files = inbox.getFiles(); // サブフォルダ（処理済み/エラー）は対象外
   const logRows = [];
@@ -441,7 +458,7 @@ function importAttendanceFiles() {
   if (count === 0) {
     // 新規ファイルがなくても、既存の取込データから集計シートだけは最新化しておく
     try { writeOvertimeMatrixSheet_(); } catch (e) { /* 失敗しても「対象ファイルなし」のログ自体は出す */ }
-    writeImportLog_([[new Date(), '(対象ファイルなし)', '情報', '取込フォルダにxlsxファイルがありませんでした']]);
+    writeImportLog_([...salesLogRows, [new Date(), '(対象ファイルなし)', '情報', '取込フォルダにxlsxファイルがありませんでした']]);
     return;
   }
 
@@ -449,7 +466,7 @@ function importAttendanceFiles() {
   try { writeOvertimeMatrixSheet_(); }
   catch (e) { logRows.push([new Date(), '(残業時間集計シート)', 'エラー', e.message]); }
   logRows.push(...checkCompleteness_(touchedYearMonths));
-  writeImportLog_(logRows);
+  writeImportLog_([...salesLogRows, ...logRows]);
 }
 
 /* ─── 今回取込んだ年度・月について、「メンバー設定」に対して未取込のメンバーがいないか確認 ─── */
@@ -789,6 +806,50 @@ function rebuildOvertimeMatrixSheet_() {
   try {
     writeOvertimeMatrixSheet_();
     SpreadsheetApp.getUi().alert('残業時間集計シートを更新しました:\n' + getOrCreateOvertimeMatrixSheet_().getParent().getUrl());
+  } catch (e) {
+    SpreadsheetApp.getUi().alert('更新に失敗しました: ' + e.message);
+  }
+}
+
+/* ═══ ㉑ 売上データ自動反映（別スプレッドシート連携） ═══ */
+// 「実績_地域インフラ共創1課」タブのAK列（ユニット2）・AL列（ユニット3）を今年度分としてそのまま読み取る。
+// 0（未報告の月のプレースホルダ）はnullとして扱い、ダッシュボードでは「—」（未入力）表示にする。
+function importSalesData_() {
+  const srcSs = SpreadsheetApp.openById(SALES_SOURCE_SHEET_ID);
+  const srcSheet = srcSs.getSheetByName(SALES_SOURCE_TAB);
+  if (!srcSheet) throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません`);
+
+  const vals = srcSheet.getRange(SALES_SOURCE_START_ROW, SALES_SOURCE_COL_UNIT2, 12, 2).getValues();
+  const toVal = v => (v === '' || v == null || Number(v) === 0) ? null : Number(v);
+  const unit2 = vals.map(r => toVal(r[0]));
+  const unit3 = vals.map(r => toVal(r[1]));
+
+  const now = new Date();
+  const curFiscalYear = String(now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1);
+
+  const jsonSheet = getOrCreate_(SHEET_JSON);
+  const raw = jsonSheet.getRange('A1').getValue();
+  let data = raw ? JSON.parse(raw) : {};
+  data = unwrapLegacyPayload_(data, jsonSheet);
+  data.salesData = data.salesData || {};
+  data.salesData[curFiscalYear] = { unit2, unit3 };
+
+  const json = JSON.stringify(data);
+  jsonSheet.getRange('A1').setValue(json);
+  jsonSheet.getRange('B1').setValue(Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss'));
+  jsonSheet.getRange('C1').setValue('最終保存日時（売上データ自動取込）');
+  saveBackup_(json);
+  writeSalesSheet_(data);
+
+  const reportedMonths = unit2.filter(v => v != null).length;
+  return `${curFiscalYear}年度 / 反映済み${reportedMonths}ヶ月分`;
+}
+
+/* ─── 新規の勤怠ファイル取込を待たず、売上データだけを今すぐ反映し直す ─── */
+function rebuildSalesData_() {
+  try {
+    const result = importSalesData_();
+    SpreadsheetApp.getUi().alert('売上データを更新しました: ' + result);
   } catch (e) {
     SpreadsheetApp.getUi().alert('更新に失敗しました: ' + e.message);
   }
