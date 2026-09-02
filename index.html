@@ -118,9 +118,6 @@ table.stbl tbody td.over-cell{color:#dc2626 !important;font-weight:700}
 .btn-print{background:#0f172a;color:#fff;border-color:#0f172a;font-size:11px;padding:5px 11px}
 select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24px 4px 8px;color:#475569;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 6px center;appearance:none;cursor:pointer}
 
-/* ── ⑤ Group badge ── */
-.grp-badge{display:inline-block;font-size:9px;font-weight:600;padding:1px 6px;border-radius:10px;vertical-align:middle;margin-left:4px;white-space:nowrap}
-
 /* ── Input section ── */
 .input-card-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
 .year-input-tabs{display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:3px;margin-bottom:12px;width:fit-content}
@@ -142,20 +139,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .ot-summary-bar{display:flex;gap:14px;flex-wrap:wrap;padding:8px 12px;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0}
 .ot-sum-item{font-size:11px;color:#64748b}
 .ot-sum-item strong{font-weight:700}
-
-/* ── Member table ── */
-.member-wrap{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
-.member-table{width:100%;font-size:11px;border-collapse:collapse;min-width:440px}
-.member-table th{padding:6px 8px;font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;border-bottom:2px solid #e2e8f0;text-align:center;white-space:nowrap}
-.member-table th:first-child{text-align:left}
-.member-table td{padding:5px 8px;border-bottom:1px solid #f1f5f9;text-align:center;vertical-align:middle;white-space:nowrap}
-.member-table td:first-child{text-align:left;font-weight:600;color:#1e293b;white-space:nowrap}
-.member-table tr:hover > td{background:#f8fafc}
-.num-input{width:50px;text-align:center;border:1px solid #e2e8f0;border-radius:5px;padding:3px 4px;font-size:11px;color:#1e293b;background:#f8fafc}
-.num-input:focus{outline:none;border-color:#185FA5;background:#fff}
-.achv-bar-bg{background:#f1f5f9;border-radius:10px;height:6px;width:58px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:3px}
-.achv-bar-fill{height:6px;border-radius:10px;transition:width .3s}
-.achv-pct{font-size:10px;font-weight:700}
 
 
 /* ── ② KPIセクションラベル ── */
@@ -264,7 +247,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   #topRow{grid-template-columns:1fr}
   .ot-grid{grid-template-columns:repeat(4,1fr)}
   .main{padding:10px 10px 32px}
-  .col-sp-hide{display:none}
   /* モバイル: アラート・GAS未設定バナーを非表示 */
   #gasWarningBanner{display:none !important}
   #alertPanel{display:none !important}
@@ -459,33 +441,11 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 <!-- 実績入力 -->
 <div id="inputSection" class="section">
   <div class="main" style="display:flex;flex-direction:column">
-    <!-- 残業入力 -->
-    <div class="card">
-      <div class="input-card-head">
-        <div>
-          <div class="card-title">① 残業実績 入力</div>
-          <div style="font-size:10px;color:#64748b;margin-top:1px">月別実績（h）を入力。緑=目標内 / 赤=超過 / 黄枠=当月</div>
-        </div>
-        <button class="btn btn-sm" onclick="clearActualYear()">🗑 この年度をクリア</button>
-      </div>
-      <div class="year-input-tabs">
-        <button class="year-input-tab active" id="itab2026" onclick="setInputYear('2026',this)">2026年度</button>
-        <button class="year-input-tab" id="itab2027" onclick="setInputYear('2027',this)">2027年度</button>
-        <button class="year-input-tab" id="itab2028" onclick="setInputYear('2028',this)">2028年度</button>
-      </div>
-      <div class="ot-grid" id="otInputGrid"></div>
-      <div class="ot-summary-bar">
-        <div class="ot-sum-item">入力済合計: <strong id="actual_total" style="color:#185FA5">0.0 h</strong></div>
-        <div class="ot-sum-item">対応月の目標: <strong id="target_val" style="color:#0F6E56">— h</strong></div>
-        <div class="ot-sum-item">目標対比: <strong id="achieve_val">—</strong></div>
-      </div>
-    </div>
-
     <!-- 売上実績入力 -->
     <div class="card">
       <div class="input-card-head">
         <div>
-          <div class="card-title">③ 売上実績 入力（万円）</div>
+          <div class="card-title">売上実績 入力（万円）</div>
           <div style="font-size:10px;color:#64748b;margin-top:1px">ユニット2・ユニット3の月別売上を入力。2025年度が比較基準になります。</div>
         </div>
         <button class="btn btn-sm" onclick="clearSalesYear()">🗑 この年度をクリア</button>
@@ -513,35 +473,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
         <div class="ot-sum-item">ユニット2 合計: <strong id="salesU2Total" style="color:#185FA5">— 万円</strong></div>
         <div class="ot-sum-item">ユニット3 合計: <strong id="salesU3Total" style="color:#854F0B">— 万円</strong></div>
         <div class="ot-sum-item">合算 合計: <strong id="salesTotalAll" style="color:#0f172a">— 万円</strong></div>
-      </div>
-    </div>
-
-    <!-- メンバー管理 -->
-    <div class="card">
-      <div class="input-card-head">
-        <div>
-          <div class="card-title">② メンバー有休 管理</div>
-          <div style="font-size:10px;color:#64748b;margin-top:1px">
-            氏名・グループ・付与日数・取得数は、すべてスプレッドシート「メンバー設定」シートで編集してください（自動で同期されます）。ここは閲覧専用です。
-          </div>
-        </div>
-        <select id="inputSortSel" onchange="renderInputTable()">
-          <option value="name">名前順</option>
-          <option value="achv_asc">取得率 低い順</option>
-          <option value="achv_desc">取得率 高い順</option>
-          <option value="taken_desc">取得数 多い順</option>
-        </select>
-      </div>
-      <div class="member-wrap">
-        <table class="member-table" id="memberInputTable">
-          <thead id="memberThead"><tr>
-            <th style="text-align:left;min-width:56px">氏名</th>
-            <th>グループ</th><th>付与数</th><th>取得数</th>
-            <th class="col-sp-hide" style="min-width:120px">取得率</th>
-            <th class="col-sp-hide">残日数</th>
-          </tr></thead>
-          <tbody id="memberTbody"></tbody>
-        </table>
       </div>
     </div>
 
@@ -688,18 +619,6 @@ const OT_LINE_COLORS  = (()=>{
   return map;
 })();
 const OT25_COLOR = '#94a3b8'; // 2025年度実績（前年度基準値）：控えめな配色
-
-/* ═══ ⑤ グループカラー ═══ */
-const GRP_COLORS = [
-  {bg:"#dbeafe",text:"#1e40af"},{bg:"#dcfce7",text:"#166534"},
-  {bg:"#fce7f3",text:"#9d174d"},{bg:"#fef3c7",text:"#92400e"},
-  {bg:"#ede9fe",text:"#5b21b6"},{bg:"#ffedd5",text:"#9a3412"},
-];
-function grpColor(name) {
-  if (!name) return {bg:"#f1f5f9",text:"#64748b"};
-  const i = groups.indexOf(name);
-  return i >= 0 ? GRP_COLORS[i % GRP_COLORS.length] : {bg:"#f1f5f9",text:"#64748b"};
-}
 
 /* ═══ 初期データ ═══ */
 const INIT_MEMBERS = [
@@ -938,7 +857,6 @@ async function testGasConnection(){
 /* ═══ 状態 ═══ */
 const DEFAULT_YEAR = KEYS.includes(String(FISCAL_YEAR))?String(FISCAL_YEAR):KEYS.includes(String(FISCAL_YEAR-1))?String(FISCAL_YEAR-1):KEYS[0];
 let selYear    = DEFAULT_YEAR;
-let inputYear  = DEFAULT_YEAR;
 let otChartInst=null;
 let alertOpen=false;
 let otTargetVisible=false; // ① 目標値の推移はデフォルト非表示（タップで表示）
@@ -957,7 +875,6 @@ const mTaken  = m=>sumArr(m.takenMonths);
 const achvPct = (t,d)=>d>0?Math.min(100,Math.round(t/d*100)):0;
 const barColor= p=>p>=80?"#185FA5":p>=50?"#854F0B":"#A32D2D";
 const getYC   = ()=>YCFG.find(y=>y.key===selYear);
-const getIYC  = ()=>YCFG.find(y=>y.key===inputYear);
 // Safari 15.3以前は findLastIndex / findLast 未サポートのためポリフィル
 function arrFindLastIndex(arr, pred){ for(let i=arr.length-1;i>=0;i--){ if(pred(arr[i],i)) return i; } return -1; }
 function arrFindLast(arr, pred){ for(let i=arr.length-1;i>=0;i--){ if(pred(arr[i],i)) return arr[i]; } return undefined; }
@@ -978,17 +895,11 @@ function switchSection(id,btn){
   document.getElementById(id+"Section").classList.add("active");
   btn.classList.add("active");
   if(id==="input"){
-    syncInputYearTab();
     syncSalesInputYearTab(); // 売上タブも当年度に自動選択
-    updateGroupSelects(); renderOTInputGrid(); renderInputTable(); renderSalesInputGrid();
+    updateGroupSelects(); renderSalesInputGrid();
   }
 }
 /* ⑦ 入力タブの年度ボタンを当年度に合わせる */
-function syncInputYearTab(){
-  document.querySelectorAll(".year-input-tab").forEach(b=>b.classList.remove("active"));
-  const tab=document.getElementById("itab"+inputYear);
-  if(tab) tab.classList.add("active");
-}
 /* ⑦ 売上入力タブも当年度に自動選択 */
 function syncSalesInputYearTab(){
   document.querySelectorAll('.year-input-tab[id^="stab"]').forEach(b=>b.classList.remove('active'));
@@ -1327,7 +1238,6 @@ function renderMemberChart(){
 }
 function refreshMember(){
   renderKPI(); renderAlerts(); renderMemberChart();
-  renderInputTable();
 }
 
 /* ═══ ⑱ 有休残日数（メンバー名タップで表示） ═══ */
@@ -1439,86 +1349,6 @@ function renderSummaryTable(){
     <tbody>${rows}<tr class="total-row"><td>合計</td>${totals.map((t,i)=>`<td style="color:${cols[i].color}">${t} h</td>`).join('')}</tr></tbody>`;
 }
 
-/* ═══ 年度タブ（入力） ═══ */
-function setInputYear(y,btn){
-  inputYear=y;
-  document.querySelectorAll(".year-input-tab").forEach(b=>b.classList.remove("active"));
-  btn.classList.add("active"); renderOTInputGrid();
-}
-
-/* ═══ 残業入力グリッド ═══ */
-function renderOTInputGrid(){
-  const yc=getIYC();
-  document.getElementById("otInputGrid").innerHTML=MONTHS.map((m,i)=>{
-    const v=actualData[inputYear][i],tgt=yc.tgt[i];
-    const isOver=v!==null&&tgt!==null&&v>tgt;
-    const valCls=v!==null?(isOver?"over-target":"has-value"):"";
-    const isCur=i===FISCAL_IDX&&inputYear===String(FISCAL_YEAR);
-    return `<div class="ot-cell">
-      <label class="${isCur?"current-month-label":""}">${isCur?"▼":""}${m}</label>
-      <input type="number" class="ot-input ${valCls}${isCur?" current-month-input":""}" id="ot_${i}"
-        value="${v??""}" min="0" max="999" step="0.25" placeholder="—"
-        oninput="updateActual(${i},this.value)">
-      <div class="tgt-hint">目標 ${tgt!=null?f(tgt,0)+"h":"—"}</div>
-    </div>`;
-  }).join("");
-  updateOTSummary();
-}
-function updateActual(idx,val){
-  actualData[inputYear][idx]=(val===""||val===null)?null:parseFloat(val);
-  const inp=document.getElementById("ot_"+idx);
-  const v=actualData[inputYear][idx],tgt=getIYC().tgt[idx],isCur=idx===FISCAL_IDX&&inputYear===String(FISCAL_YEAR);
-  inp.className="ot-input"+(isCur?" current-month-input":"")+" "+
-    (v===null?"":(tgt!==null&&v>tgt?"over-target":"has-value"));
-  updateOTSummary(); renderOTChart(); renderKPI(); renderAlerts(); renderSummaryTable(); saveData();
-}
-function updateOTSummary(){
-  const yc=getIYC(),ent=actualData[inputYear].filter(v=>v!==null),act=sumArr(ent);
-  const last=arrFindLastIndex(actualData[inputYear], v=>v!==null);
-  const tgt=last>=0?sumArr(yc.tgt.slice(0,last+1).filter(v=>v!==null)):0;
-  const ratio=tgt>0?(act/tgt*100).toFixed(1):null;
-  document.getElementById("actual_total").textContent=fmtQuarterHour(act)+" h";
-  document.getElementById("target_val").textContent=tgt>0?fmtQuarterHour(tgt)+" h（"+ent.length+"ヶ月）":"—";
-  const el=document.getElementById("achieve_val");
-  el.textContent=ratio?ratio+"%":"—";
-  el.style.color=ratio?(parseFloat(ratio)<=100?"#085041":"#A32D2D"):"#94a3b8";
-}
-function clearActualYear(){
-  actualData[inputYear]=new Array(12).fill(null);
-  updateOTSummary(); renderOTInputGrid(); renderOTChart(); renderKPI(); renderAlerts(); renderSummaryTable(); saveData();
-}
-
-/* ═══ メンバー管理テーブル（⑤ グループ列付き） ═══ */
-function renderInputTable(){
-  const srt=document.getElementById("inputSortSel").value;
-  document.getElementById("memberThead").innerHTML=`<tr>
-    <th style="text-align:left;min-width:60px">氏名</th>
-    <th>グループ</th><th>付与数</th><th>取得数</th>
-    <th class="col-sp-hide" style="min-width:120px">取得率</th>
-    <th class="col-sp-hide">残日数</th>
-  </tr>`;
-  let d=members.map((m,i)=>({...m,idx:i,taken:mTaken(m),achv:achvPct(mTaken(m),m.days)}));
-  if(srt==="achv_asc")   d.sort((a,b)=>a.achv-b.achv);
-  else if(srt==="achv_desc")  d.sort((a,b)=>b.achv-a.achv);
-  else if(srt==="taken_desc") d.sort((a,b)=>b.taken-a.taken);
-  let html='';
-  d.forEach((m)=>{
-    const a=m.achv,bc=barColor(a),rem=Math.max(0,m.days-m.taken);
-    const gc=grpColor(m.group);
-    html+=`<tr>
-      <td>${escapeHtml(m.name)}</td>
-      <td>${m.group?`<span class="grp-badge" style="background:${gc.bg};color:${gc.text}">${escapeHtml(m.group)}</span>`:'<span style="font-size:10px;color:#94a3b8">未設定</span>'}</td>
-      <td style="color:#64748b;font-weight:600">${m.days}日</td>
-      <td style="color:#64748b;font-weight:600">${m.taken}日</td>
-      <td class="col-sp-hide" style="text-align:left;padding-left:10px">
-        <span class="achv-bar-bg"><span class="achv-bar-fill" style="width:${a}%;background:${bc}"></span></span>
-        <span class="achv-pct" style="color:${bc}">${a}%</span>
-      </td>
-      <td class="col-sp-hide" style="font-weight:700;color:${rem===0?"#085041":"#64748b"}">${rem} 日</td>
-    </tr>`;
-  });
-  document.getElementById("memberTbody").innerHTML=html;
-}
 /* ═══ 管理者認証 ═══ */
 /* ═══ ① 管理者認証（SHA-256ハッシュ＋GAS照合） ═══ */
 // SHA-256('3150') — ソースコードにパスワード平文を書かない
