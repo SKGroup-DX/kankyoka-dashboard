@@ -817,7 +817,10 @@ function rebuildOvertimeMatrixSheet_() {
 function importSalesData_() {
   const srcSs = SpreadsheetApp.openById(SALES_SOURCE_SHEET_ID);
   const srcSheet = srcSs.getSheetByName(SALES_SOURCE_TAB);
-  if (!srcSheet) throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません`);
+  if (!srcSheet) {
+    const actualNames = srcSs.getSheets().map(s => s.getName()).join('、');
+    throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません（実際のタブ名: ${actualNames}）`);
+  }
 
   const vals = srcSheet.getRange(SALES_SOURCE_START_ROW, SALES_SOURCE_COL_UNIT2, 12, 2).getValues();
   const toVal = v => (v === '' || v == null || Number(v) === 0) ? null : Number(v);
