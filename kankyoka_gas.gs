@@ -356,7 +356,7 @@ const VALID_ACTUAL_YEARS    = ['2026', '2027', '2028']; // actualDataで管理�
 
 // ㉑ 売上データの自動反映元（別スプレッドシート）
 const SALES_SOURCE_SHEET_ID  = '1pvCvTXBPX28-DgzGmRQMTESUkFcBS_yfk_SWQmIcYgY';
-const SALES_SOURCE_TAB       = '実績_地域インフラ共創1課';
+const SALES_SOURCE_TAB       = '実績_地域インフラ共創部1課';
 const SALES_SOURCE_START_ROW = 3;  // この行が「4月」（以降12行で3月まで）
 const SALES_SOURCE_COL_UNIT2 = 37; // AK列
 const SALES_SOURCE_COL_UNIT3 = 38; // AL列
@@ -812,7 +812,7 @@ function rebuildOvertimeMatrixSheet_() {
 }
 
 /* ═══ ㉑ 売上データ自動反映（別スプレッドシート連携） ═══ */
-// 「実績_地域インフラ共創1課」タブのAK列（ユニット2）・AL列（ユニット3）を今年度分としてそのまま読み取る。
+// 「実績_地域インフラ共創部1課」タブのAK列（ユニット2）・AL列（ユニット3）を今年度分としてそのまま読み取る。
 // 0（未報告の月のプレースホルダ）はnullとして扱い、ダッシュボードでは「—」（未入力）表示にする。
 // 目に見えない文字（ゼロ幅スペース等）や全角/半角の違いを吸収して比較するための正規化
 function normalizeSheetName_(s) {
