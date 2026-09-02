@@ -26,7 +26,7 @@ URL: https://kasuyakouta.github.io/kankyoka-dashboard/
 
 \- \*\*ダッシュボード(index.html)は完全に読込専用\*\*。管理者ログイン(PIN)・スプレッドシート連携設定・Excel出力・印刷・データリセット・実績入力タブ(残業実績/メンバー有休/売上実績)は全て削除済み(2026年、残業→勤怠データ自動取込・売上→別スプレッドシート自動取込が安定したため)。データはすべてGAS側の自動取込またはスプレッドシート直接編集で反映され、フロントからGASへの書込み(POST)は行わない
 
-\- \*\*kankyoka\_gas.gs側にはPIN認証(doPost/verify\_pin/change\_pin、SHA-256ハッシュ)がまだ残っている\*\*が、フロントから呼ばれなくなったため実質未使用。将来的に削除するか判断が必要(PIN関連の変更時は「平文をソースに書かない」設計方針を維持すること)
+\- \*\*kankyoka\_gas.gs側のPIN認証(doPost/verify\_pin/change\_pin)も削除済み\*\*。フロントが読込専用になり書込みが一切なくなったため、認証窓口(checkPinAuth\_)・PINハッシュ管理(getStoredPinHash\_、「設定」シート)ごと廃止した。副次的に、doPostからしか呼ばれていなかった`writeLeaveSheet\_`(有休取得シート)・`writeSalesTargetSheet\_`(売上目標シート)も未使用になったため削除——これら2シートは以後自動更新されない(氏名・グループ・付与日数・取得数は引き続き「メンバー設定」シートで正しく管理される)
 
 \- KPIカードはwarn/danger/ok/neutralの4状態で色分け表示、トレンド(up-bad/up-good/dn-bad/dn-good)も表示
 
