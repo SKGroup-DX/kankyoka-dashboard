@@ -126,8 +126,11 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .year-input-tabs{display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:3px;margin-bottom:12px;width:fit-content}
 .year-input-tab{padding:4px 16px;font-size:12px;font-weight:600;border-radius:6px;border:none;background:transparent;color:#64748b;cursor:pointer;transition:all .15s}
 .year-input-tab.active{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.ot-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}
+/* ⑳ 12ヶ月を1行に並べ、2段組みによる「途中で折り返る分かりにくさ」を解消。
+   4月始まりの半期（4〜9月／10〜3月）の境目にだけ区切り線を入れて視覚的にグルーピングする */
+.ot-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:5px;margin-bottom:10px}
 .ot-cell{display:flex;flex-direction:column;gap:2px}
+.ot-cell:nth-child(6){padding-right:7px;margin-right:6px;border-right:1px dashed #cbd5e1}
 .ot-cell label{font-size:10px;font-weight:600;color:#64748b;text-align:center;padding:2px 0;border-radius:4px}
 .ot-cell label.current-month-label{background:#fef08a;color:#854F0B;font-weight:700}
 .ot-cell .tgt-hint{font-size:9px;color:#94a3b8;text-align:center}
