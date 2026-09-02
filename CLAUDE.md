@@ -12,11 +12,11 @@ URL: https://kasuyakouta.github.io/kankyoka-dashboard/
 
 \## 技術スタック
 
-\- フロント: GitHub Pages上の単一HTMLファイル(1,883行)
+\- フロント: GitHub Pages上の単一HTMLファイル(約1,330行。管理者機能削除により大幅縮小)
 
 \- バックエンド: Google Apps Script (GAS)
 
-\- GAS URL: localStorage(キー'kankyoka\_gas\_url')で管理、デフォルト値はindex.html 676行目に記載
+\- GAS URL: `DEFAULT\_GAS\_URL`定数に埋め込み、localStorage(キー'kankyoka\_gas\_url')で上書き可能(変更UIは削除済みのためdevtools等での手動設定のみ)
 
 \- グラフ描画: Chart.js 4.4.1(CDN経由、積み上げグラフ・ドーナツチャート)
 
@@ -24,9 +24,9 @@ URL: https://kasuyakouta.github.io/kankyoka-dashboard/
 
 \## このアプリ特有の設計(他アプリと異なる点に注意)
 
-\- \*\*管理者PINはSHA-256ハッシュ化(Web Crypto API使用)\*\*。デフォルトPIN「3150」のハッシュ値をソースコードに埋め込み(平文は書かない設計)。localStorage(キー'kankyoka\_pin\_hash')に変更後ハッシュを保存
+\- \*\*ダッシュボード(index.html)は完全に読込専用\*\*。管理者ログイン(PIN)・スプレッドシート連携設定・Excel出力・印刷・データリセット・実績入力タブ(残業実績/メンバー有休/売上実績)は全て削除済み(2026年、残業→勤怠データ自動取込・売上→別スプレッドシート自動取込が安定したため)。データはすべてGAS側の自動取込またはスプレッドシート直接編集で反映され、フロントからGASへの書込み(POST)は行わない
 
-\- データ保存はlocalStorage即時反映 + GASへは2秒デバウンスで遅延送信
+\- \*\*kankyoka\_gas.gs側にはPIN認証(doPost/verify\_pin/change\_pin、SHA-256ハッシュ)がまだ残っている\*\*が、フロントから呼ばれなくなったため実質未使用。将来的に削除するか判断が必要(PIN関連の変更時は「平文をソースに書かない」設計方針を維持すること)
 
 \- KPIカードはwarn/danger/ok/neutralの4状態で色分け表示、トレンド(up-bad/up-good/dn-bad/dn-good)も表示
 
@@ -52,7 +52,7 @@ URL: https://kasuyakouta.github.io/kankyoka-dashboard/
 
 \- 「ダッシュボードデータ」シートA1セルが過去に`{pinHash,payload:{...}}`という壊れた入れ子構造で保存されたことがあった(売上データ等が読めなくなる不具合の原因)。doGet/recalcFromTrack\_の`unwrapLegacyPayload\_()`が読込時に自動検出・修復する
 
-\- \*\*売上実績も自動反映\*\*(kankyoka\_gas.gsの㉑、`importSalesData\_()`)。別のGoogleスプレッドシート(ID: `1pvCvTXBPX28-DgzGmRQMTESUkFcBS\_yfk\_SWQmIcYgY`、タブ「実績\_地域インフラ共創部1課」)のAK列(ユニット2)・AL列(ユニット3)を今年度分として読み取り(元データは千円単位のため÷10で万円に変換)、勤怠データ取込と同じ日次トリガーに相乗りして実行される(手動メニュー「売上データを今すぐ更新」も可)。元シートの0(未報告月のプレースホルダ)はnull(未入力の「—」表示)として扱う。管理画面の①残業実績入力・②メンバー有休管理は自動化により削除済みで、③売上実績入力(手動)のみ残っている——将来的にこの自動反映が安定すれば売上入力欄も撤去できる
+\- \*\*売上実績も自動反映\*\*(kankyoka\_gas.gsの㉑、`importSalesData\_()`)。別のGoogleスプレッドシート(ID: `1pvCvTXBPX28-DgzGmRQMTESUkFcBS\_yfk\_SWQmIcYgY`、タブ「実績\_地域インフラ共創部1課」)のAK列(ユニット2)・AL列(ユニット3)を今年度分として読み取り(元データは千円単位のため÷10で万円に変換)、勤怠データ取込と同じ日次トリガーに相乗りして実行される(手動メニュー「売上データを今すぐ更新」も可)。元シートの0(未報告月のプレースホルダ)はnull(未入力の「—」表示)として扱う。この自動反映が安定したため、管理画面(実績入力タブ)・管理者ログイン・設定・Excel出力・印刷は全て削除し、ダッシュボードは完全に読込専用になった
 
 
 

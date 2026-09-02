@@ -9,7 +9,6 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic",sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
@@ -22,10 +21,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu
 .hdr-left .hdr-sub{font-size:11px;color:#64748b;margin-top:1px}
 .badge{font-size:11px;padding:3px 9px;border-radius:20px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-weight:600;white-space:nowrap}
 .today-badge{font-size:11px;padding:3px 9px;border-radius:20px;background:#fefce8;color:#854F0B;border:1px solid #fde68a;font-weight:600;white-space:nowrap}
-.nav-tabs{display:flex;gap:2px;background:#f1f5f9;border-radius:9px;padding:3px}
-.nav-tab{padding:5px 14px;font-size:12px;font-weight:600;border-radius:7px;border:none;background:transparent;color:#64748b;cursor:pointer;transition:all .15s;white-space:nowrap}
-.nav-tab.active{background:#fff;color:#0f172a;box-shadow:0 1px 4px rgba(0,0,0,.12)}
-.section{display:none}.section.active{display:block}
 
 /* ── Layout ── */
 .main{max-width:1100px;margin:0 auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:12px}
@@ -109,37 +104,8 @@ table.stbl tbody td.over-cell{color:#dc2626 !important;font-weight:700}
 .btn:hover{background:#f1f5f9}
 .btn-primary{background:#185FA5;color:#fff;border-color:#185FA5}
 .btn-primary:hover{background:#0C447C}
-.btn-success{background:#166534;color:#fff;border-color:#166534}
-.btn-success:hover{background:#14532d}
-.btn-danger{background:#fff;color:#A32D2D;border-color:#f0a0a0}
-.btn-danger:hover{background:#FCEBEB}
-.btn-warn{background:#fff;color:#92400e;border-color:#fcd34d}
 .btn-sm{padding:2px 7px;font-size:10px}
-.btn-print{background:#0f172a;color:#fff;border-color:#0f172a;font-size:11px;padding:5px 11px}
 select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24px 4px 8px;color:#475569;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 6px center;appearance:none;cursor:pointer}
-
-/* ── Input section ── */
-.input-card-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.year-input-tabs{display:flex;gap:2px;background:#f1f5f9;border-radius:8px;padding:3px;margin-bottom:12px;width:fit-content}
-.year-input-tab{padding:4px 16px;font-size:12px;font-weight:600;border-radius:6px;border:none;background:transparent;color:#64748b;cursor:pointer;transition:all .15s}
-.year-input-tab.active{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-/* ⑳ 12ヶ月を1行に並べ、2段組みによる「途中で折り返る分かりにくさ」を解消。
-   4月始まりの半期（4〜9月／10〜3月）の境目にだけ区切り線を入れて視覚的にグルーピングする */
-.ot-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:5px;margin-bottom:10px}
-.ot-cell{display:flex;flex-direction:column;gap:2px}
-.ot-cell:nth-child(6){padding-right:7px;margin-right:6px;border-right:1px dashed #cbd5e1}
-.ot-cell label{font-size:10px;font-weight:600;color:#64748b;text-align:center;padding:2px 0;border-radius:4px}
-.ot-cell label.current-month-label{background:#fef08a;color:#854F0B;font-weight:700}
-.ot-cell .tgt-hint{font-size:9px;color:#94a3b8;text-align:center}
-.ot-input{width:100%;text-align:center;border:1px solid #e2e8f0;border-radius:5px;padding:4px 3px;font-size:12px;color:#0f172a;background:#f8fafc}
-.ot-input:focus{outline:none;border-color:#185FA5;background:#fff}
-.ot-input.has-value{background:#EAF3DE;border-color:#639922;color:#27500A;font-weight:600}
-.ot-input.over-target{background:#FCEBEB;border-color:#E24B4A;color:#A32D2D;font-weight:600}
-.ot-input.current-month-input{border-width:2px;border-color:#EAB308}
-.ot-summary-bar{display:flex;gap:14px;flex-wrap:wrap;padding:8px 12px;background:#f8fafc;border-radius:7px;border:1px solid #e2e8f0}
-.ot-sum-item{font-size:11px;color:#64748b}
-.ot-sum-item strong{font-weight:700}
-
 
 /* ── ② KPIセクションラベル ── */
 .kpi-section-lbl{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:0 2px;margin-bottom:-4px}
@@ -172,7 +138,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .cbar-wrap{flex:1;position:relative;height:14px}
 .cbar-track{position:absolute;inset:0;display:flex;border-radius:3px;overflow:hidden}
 .cbar-bar-lbl{position:absolute;top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;pointer-events:none;z-index:1;line-height:1}
-.cbar-grp{font-size:9px;padding:0 5px;border-radius:8px;flex-shrink:0;font-weight:600}
 .cbar-axis-row{display:flex;align-items:flex-start;gap:5px;margin-top:5px;padding-top:4px;border-top:1px solid #e2e8f0}
 .cbar-name-spc{width:76px;flex-shrink:0}
 .cbar-axis{flex:1;position:relative;height:16px}
@@ -185,19 +150,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 .modal h3{font-size:14px;font-weight:700;margin-bottom:10px;color:#0f172a}
 .modal-btns{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
 
-/* ── PIN Modal ── */
-.pin-modal{width:280px;padding:24px 20px}
-.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid #cbd5e1;background:transparent;display:inline-block;transition:all .15s}
-.pin-dot.filled{background:#0f172a;border-color:#0f172a;transform:scale(1.1)}
-.pin-dot.error{background:#dc2626;border-color:#dc2626}
-@keyframes pinShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
-.pin-shake{animation:pinShake .4s ease}
-.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.pin-key{padding:16px 8px;font-size:22px;font-weight:600;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc;cursor:pointer;text-align:center;transition:all .1s;user-select:none;color:#0f172a;-webkit-tap-highlight-color:transparent}
-.pin-key:active{background:#e2e8f0;transform:scale(.93)}
-.pin-del{font-size:18px;color:#64748b}
-.pin-cancel{font-size:12px;color:#94a3b8;font-weight:500}
-
 /* ===== PRINT A3縦 ===== */
 @media print{
   @page{size:A3 portrait;margin:7mm 8mm}
@@ -205,10 +157,8 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   body{background:#fff !important}
   .hdr{position:static !important;box-shadow:none;padding:5px 10px;border-bottom:1px solid #e2e8f0;gap:3px}
   .hdr-left .hdr-title{font-size:13px}.hdr-left .hdr-sub{font-size:9px}
-  .hdr-bottom .btn-print,.hdr-bottom .nav-tabs,.hdr-bottom .btn-success,.hdr-badge-pc{display:none !important}
+  .hdr-badge-pc{display:none !important}
   .today-badge{font-size:9px;padding:2px 7px}
-  .section{display:none !important}
-  #dashboardSection{display:block !important}
   .main{display:grid !important;grid-template-columns:1fr 1fr;
     grid-template-areas:"kpi kpi" "alert alert" "ot summary" "member member";
     gap:5px;padding:4px 0 0;max-width:100%}
@@ -245,10 +195,8 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
 @media(max-width:760px){
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   #topRow{grid-template-columns:1fr}
-  .ot-grid{grid-template-columns:repeat(4,1fr)}
   .main{padding:10px 10px 32px}
-  /* モバイル: アラート・GAS未設定バナーを非表示 */
-  #gasWarningBanner{display:none !important}
+  /* モバイル: アラートを非表示 */
   #alertPanel{display:none !important}
   /* モバイル: ヘッダーをコンパクトに */
   .hdr{padding:8px 12px;gap:4px}
@@ -307,22 +255,13 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
     <span class="today-badge" id="todayBadge"></span>
   </div>
   <div class="hdr-bottom">
-    <div class="nav-tabs">
-      <button class="nav-tab active" id="dashboardNavTab" onclick="switchSection('dashboard',this)">📊 ダッシュボード</button>
-      <button class="nav-tab" id="inputNavTab" style="display:none" onclick="switchSection('input',this)">📝 実績入力</button>
-    </div>
-    <button class="btn btn-success" id="excelBtn"      onclick="exportExcel()" style="display:none">📥 Excel出力</button>
-    <button class="btn btn-print"   id="printBtn"      onclick="doPrint()"     style="display:none">🖨 印刷(A3縦)</button>
-    <button class="btn btn-sm"      id="adminLoginBtn" onclick="openPinModal()" title="管理者ログイン" style="border-color:#7c3aed;color:#7c3aed">🔐 管理者</button>
-    <button class="btn btn-sm"      id="adminLockBtn"  onclick="lockAdmin()"   title="管理者ロック" style="display:none;border-color:#16a34a;color:#16a34a">🔓 ロック</button>
-    <button class="btn btn-sm"      id="settingsBtn"   onclick="openSettings()" title="スプレッドシート連携設定" style="display:none">⚙️ 連携設定</button>
     <span id="saveStatus" style="font-size:10px;color:#64748b;white-space:nowrap"></span>
     <span class="badge hdr-badge-pc">中期計画 2026-2028</span>
   </div>
 </header>
 
 <!-- ダッシュボード -->
-<div id="dashboardSection" class="section active">
+<div id="dashboardSection">
   <div class="main">
     <div class="kpi-section-lbl">📉 残業・有休</div>
     <!-- モバイル専用: タップで開閉するタブ（PCでは非表示） -->
@@ -335,14 +274,6 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
     <div class="kpi-grid" id="salesKpiGrid" style="grid-template-columns:repeat(3,1fr)"></div>
 
     <!-- GAS未設定警告バナー -->
-    <div id="gasWarningBanner" style="display:none;background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:10px 16px;font-size:11px;color:#92400e;align-items:center;gap:10px">
-      <span style="font-size:16px">⚠️</span>
-      <div>
-        <strong>スプレッドシート未連携</strong> — データはこの端末にのみ保存されています。<br>
-        <span style="font-size:10px;color:#b45309">⚙️ 連携設定からGoogle Apps ScriptのURLを設定すると、全端末でデータが共有されます。</span>
-      </div>
-      <button onclick="document.getElementById('gasWarningBanner').style.display='none'" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:16px;color:#92400e">×</button>
-    </div>
     <div class="alert-panel" id="alertPanel"></div>
 
     <div id="topRow">
@@ -438,145 +369,7 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   </div>
 </div>
 
-<!-- 実績入力 -->
-<div id="inputSection" class="section">
-  <div class="main" style="display:flex;flex-direction:column">
-    <!-- 売上実績入力 -->
-    <div class="card">
-      <div class="input-card-head">
-        <div>
-          <div class="card-title">売上実績 入力（万円）</div>
-          <div style="font-size:10px;color:#64748b;margin-top:1px">ユニット2・ユニット3の月別売上を入力。2025年度が比較基準になります。</div>
-        </div>
-        <button class="btn btn-sm" onclick="clearSalesYear()">🗑 この年度をクリア</button>
-      </div>
-      <!-- 年度タブ -->
-      <div class="year-input-tabs">
-        <button class="year-input-tab" id="stab2025" onclick="setSalesInputYear('2025',this)">2025年度</button>
-        <button class="year-input-tab" id="stab2026" onclick="setSalesInputYear('2026',this)">2026年度</button>
-        <button class="year-input-tab" id="stab2027" onclick="setSalesInputYear('2027',this)">2027年度</button>
-        <button class="year-input-tab" id="stab2028" onclick="setSalesInputYear('2028',this)">2028年度</button>
-      </div>
-      <!-- 年度目標入力 -->
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;margin-bottom:10px">
-        <div style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px">🎯 年度目標（万円）</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="salesTargetInputs"></div>
-      </div>
-      <!-- ユニット2 -->
-      <div style="font-size:11px;font-weight:700;color:#185FA5;margin-bottom:6px">📊 ユニット2</div>
-      <div class="ot-grid" id="salesU2Grid"></div>
-      <!-- ユニット3 -->
-      <div style="font-size:11px;font-weight:700;color:#854F0B;margin-bottom:6px;margin-top:10px">📊 ユニット3</div>
-      <div class="ot-grid" id="salesU3Grid"></div>
-      <!-- 合計サマリー -->
-      <div class="ot-summary-bar" style="margin-top:8px">
-        <div class="ot-sum-item">ユニット2 合計: <strong id="salesU2Total" style="color:#185FA5">— 万円</strong></div>
-        <div class="ot-sum-item">ユニット3 合計: <strong id="salesU3Total" style="color:#854F0B">— 万円</strong></div>
-        <div class="ot-sum-item">合算 合計: <strong id="salesTotalAll" style="color:#0f172a">— 万円</strong></div>
-      </div>
-    </div>
-
-    <!-- ⚠️ データ管理（折りたたみ） -->
-    <div class="card" style="border-color:#fcd34d">
-      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none"
-           onclick="toggleDataMgr()">
-        <span style="font-size:12px;font-weight:700;color:#92400e">⚠️ データ管理</span>
-        <span id="dataMgrChevron" style="font-size:11px;color:#94a3b8;transition:transform .2s">▼</span>
-      </div>
-      <div id="dataMgrBody" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #fde68a">
-        <p style="font-size:11px;color:#64748b;margin-bottom:10px">
-          残業実績・有休取得日数・売上実績の入力データを初期状態に戻します（氏名・グループ・付与日数はスプレッドシート管理のため保持されます）。<br>
-          <strong style="color:#92400e">この操作は元に戻せません。</strong>
-        </p>
-        <button class="btn btn-danger" onclick="confirmReset()">🗑 全データをリセット</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Modals -->
-<div class="modal-bg" id="settingsModal">
-  <div class="modal" style="width:380px">
-    <h3>⚙️ スプレッドシート連携設定</h3>
-    <p style="font-size:11px;color:#475569;margin-bottom:12px">
-      Google Apps Script のウェブアプリURLを設定すると、入力のたびに自動でスプレッドシートへ保存されます。
-    </p>
-    <div style="margin-bottom:8px">
-      <label style="font-size:10px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">ウェブアプリ URL</label>
-      <input type="text" id="gasUrlInput" placeholder="https://script.google.com/macros/s/..."
-        style="width:100%;padding:7px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;color:#1e293b;outline:none"
-        onfocus="this.style.borderColor='#185FA5'" onblur="this.style.borderColor='#e2e8f0'">
-    </div>
-    <div style="background:#f8fafc;border-radius:7px;padding:10px 12px;font-size:10px;color:#64748b;margin-bottom:10px;line-height:1.6">
-      <strong style="color:#0f172a">設定手順:</strong><br>
-      1. 添付の <code>kankyoka_gas.gs</code> をコピー<br>
-      2. スプレッドシート → 拡張機能 → Apps Script に貼り付け<br>
-      3. デプロイ → 新しいデプロイ（種類: ウェブアプリ）<br>
-      4. 実行ユーザー: <strong>自分</strong>、アクセス: <strong>全員</strong><br>
-      5. 生成されたURLをここに貼り付け
-    </div>
-    <div id="gasTestResult" style="font-size:11px;min-height:18px;text-align:center;margin-bottom:8px"></div>
-    <div class="modal-btns">
-      <button class="btn" onclick="closeModal()">キャンセル</button>
-      <button class="btn" onclick="testGasConnection()" style="color:#185FA5;border-color:#185FA5">🔌 接続テスト</button>
-      <button class="btn btn-primary" onclick="saveGasUrl()">保存して連携</button>
-    </div>
-    <!-- ⑥ パスワード変更 -->
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9">
-      <div style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px">🔑 パスワード変更</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <input type="password" id="changePinCurrent" placeholder="現在のパスワード（4桁）" maxlength="4" inputmode="numeric"
-          style="padding:6px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;width:100%;outline:none">
-        <input type="password" id="changePinNew"     placeholder="新しいパスワード（4桁）"  maxlength="4" inputmode="numeric"
-          style="padding:6px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;width:100%;outline:none">
-        <input type="password" id="changePinNew2"    placeholder="新しいパスワード（確認）" maxlength="4" inputmode="numeric"
-          style="padding:6px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:11px;width:100%;outline:none">
-        <button class="btn btn-primary btn-sm" onclick="changePassword()">変更する</button>
-        <div id="changePinResult" style="font-size:10px;min-height:14px;text-align:center"></div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="modal-bg" id="pinModal">
-  <div class="modal pin-modal">
-    <div style="text-align:center;margin-bottom:6px;font-size:15px;font-weight:700;color:#0f172a">🔐 管理者ログイン</div>
-    <div style="text-align:center;font-size:11px;color:#64748b;margin-bottom:18px">4桁のパスワードを入力してください</div>
-    <!-- 入力ドット -->
-    <div id="pinDots" style="display:flex;justify-content:center;gap:18px;margin-bottom:20px">
-      <span class="pin-dot" id="pd0"></span>
-      <span class="pin-dot" id="pd1"></span>
-      <span class="pin-dot" id="pd2"></span>
-      <span class="pin-dot" id="pd3"></span>
-    </div>
-    <div id="pinError" style="text-align:center;font-size:11px;color:#dc2626;min-height:16px;margin-bottom:12px"></div>
-    <!-- テンキー -->
-    <div class="pin-keypad">
-      <button class="pin-key" onclick="enterPin('1')">1</button>
-      <button class="pin-key" onclick="enterPin('2')">2</button>
-      <button class="pin-key" onclick="enterPin('3')">3</button>
-      <button class="pin-key" onclick="enterPin('4')">4</button>
-      <button class="pin-key" onclick="enterPin('5')">5</button>
-      <button class="pin-key" onclick="enterPin('6')">6</button>
-      <button class="pin-key" onclick="enterPin('7')">7</button>
-      <button class="pin-key" onclick="enterPin('8')">8</button>
-      <button class="pin-key" onclick="enterPin('9')">9</button>
-      <button class="pin-key pin-cancel" onclick="closeModal()">取消</button>
-      <button class="pin-key" onclick="enterPin('0')">0</button>
-      <button class="pin-key pin-del" onclick="deletePin()">⌫</button>
-    </div>
-  </div>
-</div>
-<div class="modal-bg" id="resetModal">
-  <div class="modal">
-    <h3>データをリセット</h3>
-    <p style="font-size:12px;color:#475569;margin-bottom:4px">すべての入力データを初期状態に戻します。</p>
-    <p style="font-size:10px;color:#94a3b8">この操作は元に戻せません。</p>
-    <div class="modal-btns">
-      <button class="btn" onclick="closeModal()">キャンセル</button>
-      <button class="btn btn-danger" onclick="doReset()">リセットする</button>
-    </div>
-  </div>
-</div>
 <!-- ⑱ 有休残日数（メンバー名タップで表示） -->
 <div class="modal-bg" id="leaveRemainModal">
   <div class="modal" style="width:280px;text-align:center">
@@ -661,14 +454,12 @@ let memberOvertime = {}; // ⑪ メンバー別残業実績（取込データ（
 let memberLeaveRemaining = {}; // ⑱ メンバー別 直近取込月の有休残日数: {氏名:{days,asOf}}
 let gasDataLoaded = false; // ⑮ GASからの初回取得が完了したか（未完了時は「データなし」と「読込中」を区別する）
 let gasUrl     = '';
-let saveTimer  = null;
-let pendingSave = false; // ⑤ デバウンス待ち保存が残っているか（タブを閉じる際のフラッシュ判定用）
 
 function setSaveStatus(s){
   const el=document.getElementById('saveStatus'); if(!el) return;
-  const map={idle:'',loading:'⏳ 読込中…',saving:'⏳ 保存中…',saved:'✅ 保存済',error:'⚠️ 保存失敗（ローカルのみ）',local:'💾 ローカル保存済'};
+  const map={idle:'',loading:'⏳ 読込中…',saved:'✅ 更新済'};
   el.textContent=map[s]||'';
-  el.style.color=s==='error'?'#dc2626':s==='saved'?'#16a34a':'#64748b';
+  el.style.color=s==='saved'?'#16a34a':'#64748b';
 }
 
 // ⑥ fetchにタイムアウトを設ける（GASのコールドスタート等でハングし続けないように）
@@ -681,53 +472,6 @@ async function fetchWithTimeout(url, opts={}, timeoutMs=15000){
     clearTimeout(t);
   }
 }
-
-// ① データ保存（localStorage即時 + GAS遅延2秒デバウンス）
-function saveData(){
-  try{ localStorage.setItem(STORE_KEY,JSON.stringify({actualData,members,groups,salesData,salesTargets,memberOvertime,memberLeaveRemaining})); }catch(e){}
-  setSaveStatus('local');
-  if(!gasUrl){ return; }
-  clearTimeout(saveTimer);
-  pendingSave = true;
-  saveTimer=setTimeout(()=>{ pendingSave=false; saveToGAS(); }, 2000);
-}
-
-async function saveToGAS(){
-  if(!gasUrl) return;
-  setSaveStatus('saving');
-  try{
-    const body=JSON.stringify({
-      pinHash: adminHash,
-      payload: {actualData,members,groups,salesData,salesTargets}
-    });
-    const res=await fetchWithTimeout(gasUrl,{method:'POST',redirect:'follow',headers:{'Content-Type':'text/plain;charset=utf-8'},body});
-    const json=await res.json();
-    if(json.error) throw new Error(json.error);
-    setSaveStatus('saved');
-    setTimeout(()=>setSaveStatus('idle'),3000);
-  }catch(e){
-    setSaveStatus('error');
-    setTimeout(()=>setSaveStatus('idle'),4000);
-  }
-}
-
-// ⑤ タブを閉じる/バックグラウンド化する直前に、デバウンス待ちの保存を強制送信する
-// （sendBeaconはページ離脱時でも配信が保証されるが、レスポンスは受け取れない点に注意）
-function flushPendingSave(){
-  if(!pendingSave || !gasUrl) return;
-  clearTimeout(saveTimer);
-  pendingSave = false;
-  try{
-    const body=JSON.stringify({
-      pinHash: adminHash,
-      payload: {actualData,members,groups,salesData,salesTargets}
-    });
-    navigator.sendBeacon(gasUrl, new Blob([body], {type:'text/plain;charset=utf-8'}));
-  }catch(e){}
-}
-window.addEventListener('pagehide', flushPendingSave);
-window.addEventListener('beforeunload', flushPendingSave);
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') flushPendingSave(); });
 
 // データ適用（GAS/localStorage共通）
 function applyData(d){
@@ -815,45 +559,6 @@ async function loadFromGAS(){
   }
 }
 
-function doReset(){
-  actualData=mkInitActual(); salesData=mkInitSales(); salesTargets=mkInitTargets();
-  // 氏名・グループ・付与日数はスプレッドシート「メンバー設定」で管理しているため保持し、取得月別データのみ初期化
-  members=members.map(m=>({...m,takenMonths:new Array(12).fill(0)}));
-  saveData(); closeModal(); renderAll();
-}
-function confirmReset(){ document.getElementById("resetModal").classList.add("open"); }
-
-/* ═══ 設定モーダル ═══ */
-function openSettings(){
-  document.getElementById('gasUrlInput').value=gasUrl;
-  document.getElementById('gasTestResult').textContent='';
-  document.getElementById('settingsModal').classList.add('open');
-}
-function saveGasUrl(){
-  const url=document.getElementById('gasUrlInput').value.trim();
-  gasUrl=url;
-  localStorage.setItem(GAS_KEY,url);
-  closeModal();
-  if(url) saveToGAS();
-  else setSaveStatus('idle');
-}
-async function testGasConnection(){
-  const url=document.getElementById('gasUrlInput').value.trim();
-  const el=document.getElementById('gasTestResult');
-  if(!url){ el.style.color='#dc2626'; el.textContent='URLを入力してください'; return; }
-  el.style.color='#64748b'; el.textContent='接続確認中…';
-  try{
-    const res=await fetchWithTimeout(url+'?t='+Date.now(),{redirect:'follow'});
-    const d=await res.json();
-    if(d.error) throw new Error(d.error);
-    el.style.color='#16a34a';
-    el.textContent='✅ 接続成功！データを読み込めます。';
-  }catch(e){
-    el.style.color='#dc2626';
-    el.textContent='❌ 接続失敗: URLを確認してください';
-  }
-}
-
 /* ═══ 状態 ═══ */
 const DEFAULT_YEAR = KEYS.includes(String(FISCAL_YEAR))?String(FISCAL_YEAR):KEYS.includes(String(FISCAL_YEAR-1))?String(FISCAL_YEAR-1):KEYS[0];
 let selYear    = DEFAULT_YEAR;
@@ -886,29 +591,6 @@ function escapeHtml(s){
 /* ═══ ヘッダー ═══ */
 function renderTodayBadge(){
   document.getElementById("todayBadge").textContent=`${FISCAL_YEAR}年度 ${MONTHS[FISCAL_IDX]}`;
-}
-
-/* ═══ セクション ═══ */
-function switchSection(id,btn){
-  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
-  document.querySelectorAll(".nav-tab").forEach(b=>b.classList.remove("active"));
-  document.getElementById(id+"Section").classList.add("active");
-  btn.classList.add("active");
-  if(id==="input"){
-    syncSalesInputYearTab(); // 売上タブも当年度に自動選択
-    updateGroupSelects(); renderSalesInputGrid();
-  }
-}
-/* ⑦ 入力タブの年度ボタンを当年度に合わせる */
-/* ⑦ 売上入力タブも当年度に自動選択 */
-function syncSalesInputYearTab(){
-  document.querySelectorAll('.year-input-tab[id^="stab"]').forEach(b=>b.classList.remove('active'));
-  // FISCAL_YEARが2025〜2028の範囲なら当年度、範囲外は最新年度
-  const yr = ['2025','2026','2027','2028'].includes(String(FISCAL_YEAR))
-    ? String(FISCAL_YEAR) : '2028';
-  salesInputYear = yr;
-  const tab = document.getElementById('stab'+yr);
-  if(tab) tab.classList.add('active');
 }
 
 /* ═══ ① KPI（トレンド矢印付き） ═══ */
@@ -970,13 +652,6 @@ function toggleAlert(){
   alertOpen=!alertOpen;
   document.getElementById("alertBody")?.classList.toggle("open",alertOpen);
   document.getElementById("alertChevron")?.classList.toggle("open",alertOpen);
-}
-function toggleDataMgr(){
-  const body=document.getElementById('dataMgrBody');
-  const chev=document.getElementById('dataMgrChevron');
-  const open=body.style.display==='none';
-  body.style.display=open?'block':'none';
-  if(chev) chev.style.transform=open?'rotate(180deg)':'';
 }
 /* ═══ ② モバイル: 残業・有休KPIの開閉（デフォルト非表示） ═══ */
 let kpiPanelOpen=false;
@@ -1349,207 +1024,14 @@ function renderSummaryTable(){
     <tbody>${rows}<tr class="total-row"><td>合計</td>${totals.map((t,i)=>`<td style="color:${cols[i].color}">${t} h</td>`).join('')}</tr></tbody>`;
 }
 
-/* ═══ 管理者認証 ═══ */
-/* ═══ ① 管理者認証（SHA-256ハッシュ＋GAS照合） ═══ */
-// SHA-256('3150') — ソースコードにパスワード平文を書かない
-const DEFAULT_PIN_HASH = '4d364fbb3786fc31157cc1e2a2671aac0e36348ae9d6b4ba4459ee883c240fe8';
-const PIN_HASH_KEY = 'kankyoka_pin_hash'; // ⑥ localStorage に変更後ハッシュを保存
-
-let isAdmin   = false;
-let pinBuffer = '';
-let adminHash = ''; // ① ログイン確認済みのPINハッシュ。以後の保存/変更リクエストの認証に使用
-
-// SHA-256ハッシュを計算（Web Crypto API）
-async function sha256(text){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
-// 保存済みハッシュを取得（localStorage → GASの順に優先）
-function getStoredHash(){
-  return localStorage.getItem(PIN_HASH_KEY) || DEFAULT_PIN_HASH;
-}
-
-function openPinModal(){
-  pinBuffer = '';
-  updatePinDots();
-  document.getElementById('pinError').textContent = '';
-  document.getElementById('pinModal').classList.add('open');
-}
-function enterPin(d){
-  if(pinBuffer.length >= 4) return;
-  pinBuffer += d;
-  updatePinDots();
-  if(pinBuffer.length === 4) setTimeout(checkPin, 120);
-}
-function deletePin(){
-  pinBuffer = pinBuffer.slice(0,-1);
-  updatePinDots();
-}
-function updatePinDots(){
-  for(let i=0;i<4;i++){
-    const dot=document.getElementById('pd'+i);
-    if(!dot) continue;
-    dot.classList.toggle('filled', i<pinBuffer.length);
-    dot.classList.remove('error');
-  }
-}
-async function checkPin(){
-  const inputHash = await sha256(pinBuffer);
-  let valid = false;
-  let lockMsg = '';
-
-  // GAS連携がある場合はGAS側で照合（⑥ パスワードをGASで管理、②ロックアウトもGAS側で判定）
-  if(gasUrl){
-    try{
-      const res = await fetchWithTimeout(`${gasUrl}?action=verify_pin&hash=${inputHash}&t=${Date.now()}`,{redirect:'follow'});
-      const d   = await res.json();
-      if(d.locked){
-        lockMsg = `試行回数が多すぎます。${Math.ceil((d.retryAfterSec||0)/60)}分後に再試行してください`;
-      } else {
-        valid = d.valid === true;
-      }
-    }catch(e){
-      // GAS失敗時はローカルハッシュで照合（ロックアウトはGAS側でのみ判定される点に注意）
-      valid = inputHash === getStoredHash();
-    }
-  } else {
-    valid = inputHash === getStoredHash();
-  }
-
-  if(valid){
-    isAdmin = true;
-    adminHash = inputHash; // ① 以後の保存/変更リクエストの認証に使用
-    localStorage.setItem(PIN_HASH_KEY, inputHash); // ローカルキャッシュも最新化
-    closeModal();
-    applyAdminUI();
-    checkGasSetup(); // ③ GAS未設定警告
-    const tab = document.getElementById('inputNavTab');
-    if(tab) switchSection('input', tab);
-  } else {
-    const dots = document.getElementById('pinDots');
-    for(let i=0;i<4;i++){
-      const dot=document.getElementById('pd'+i);
-      if(dot){ dot.classList.add('error'); dot.classList.remove('filled'); }
-    }
-    dots.classList.remove('pin-shake');
-    void dots.offsetWidth;
-    dots.classList.add('pin-shake');
-    document.getElementById('pinError').textContent = lockMsg || 'パスワードが違います';
-    setTimeout(()=>{ pinBuffer=''; updatePinDots(); dots.classList.remove('pin-shake'); }, 700);
-  }
-}
-function lockAdmin(){
-  isAdmin = false;
-  adminHash = '';
-  applyAdminUI();
-  const tab = document.getElementById('dashboardNavTab');
-  if(tab) switchSection('dashboard', tab);
-}
-function applyAdminUI(){
-  const show = isAdmin?'':'none', hide = isAdmin?'none':'';
-  ['inputNavTab','excelBtn','printBtn','settingsBtn'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.style.display=show;
-  });
-  document.getElementById('adminLoginBtn').style.display = hide;
-  document.getElementById('adminLockBtn').style.display  = show;
-}
-
-/* ─── ③ GAS未設定の警告 ─── */
-function checkGasSetup(){
-  const banner = document.getElementById('gasWarningBanner');
-  if(!banner) return;
-  banner.style.display = (!gasUrl && isAdmin) ? 'flex' : 'none';
-}
-
-/* ─── ⑥ パスワード変更 ─── */
-async function changePassword(){
-  const cur = document.getElementById('changePinCurrent').value;
-  const nw  = document.getElementById('changePinNew').value;
-  const nw2 = document.getElementById('changePinNew2').value;
-  const el  = document.getElementById('changePinResult');
-  if(!cur||!nw||!nw2){ el.style.color='#dc2626'; el.textContent='すべて入力してください'; return; }
-  if(!/^\d{4}$/.test(nw)){ el.style.color='#dc2626'; el.textContent='新しいパスワードは4桁の数字で入力してください'; return; }
-  if(nw!==nw2){ el.style.color='#dc2626'; el.textContent='新しいパスワードが一致しません'; return; }
-  const curHash = await sha256(cur);
-  const newHash = await sha256(nw);
-
-  // ① ② 現在のパスワード照合はGASを正として行う（ロックアウトもGAS側で一元管理するため、
-  // ローカルキャッシュのみでの判定は行わない。ローカル判定だとブルートフォース対策を迂回されてしまう）
-  if(!gasUrl){
-    el.style.color='#dc2626'; el.textContent='スプレッドシート連携が未設定のため変更できません';
-    return;
-  }
-  try{
-    const res=await fetchWithTimeout(`${gasUrl}?action=change_pin&oldHash=${curHash}&newHash=${newHash}&t=${Date.now()}`,{redirect:'follow'});
-    const d=await res.json();
-    if(d.locked){
-      el.style.color='#dc2626';
-      el.textContent=`試行回数が多すぎます。${Math.ceil((d.retryAfterSec||0)/60)}分後に再試行してください`;
-      return;
-    }
-    if(!d.success){ el.style.color='#dc2626'; el.textContent=d.error||'現在のパスワードが違います'; return; }
-  }catch(e){
-    el.style.color='#dc2626'; el.textContent='通信に失敗しました。時間をおいて再試行してください';
-    return;
-  }
-
-  localStorage.setItem(PIN_HASH_KEY, newHash);
-  adminHash = newHash; // ① 以後の保存リクエストにも新しいハッシュを使う
-  el.style.color='#16a34a'; el.textContent='✅ パスワードを変更しました';
-  ['changePinCurrent','changePinNew','changePinNew2'].forEach(id=>{document.getElementById(id).value='';});
-}
-
 function closeModal(){ document.querySelectorAll(".modal-bg").forEach(m=>m.classList.remove("open")); }
-
-/* ═══ Excel出力 ═══ */
-function exportExcel(){
-  const wb=XLSX.utils.book_new();
-  const otH=['月','2025年度実績(h)','2026実績(h)','2027実績(h)','2028実績(h)','2026目標(h)','2027目標(h)','2028目標(h)'];
-  const otR=MONTHS.map((m,i)=>[m,OT25[i]??'',actualData['2026'][i]??'',actualData['2027'][i]??'',actualData['2028'][i]??'',OT26_TGT[i],OT27_TGT[i],OT28_TGT[i]]);
-  otR.push(['合計',sumArr(OT25),...KEYS.map(k=>sumArr(actualData[k].filter(v=>v!==null))),sumArr(OT26_TGT),sumArr(OT27_TGT),sumArr(OT28_TGT)]);
-  const ws1=XLSX.utils.aoa_to_sheet([otH,...otR]);
-  ws1['!cols']=[{wch:6},{wch:14},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
-  XLSX.utils.book_append_sheet(wb,ws1,'残業時間');
-  const lvH=['氏名','グループ','付与日数','取得日数','取得率','残日数',...MONTHS.map(m=>m+'取得')];
-  const lvR=members.map(m=>{const t=mTaken(m);return[m.name,m.group||'未設定',m.days,t,achvPct(t,m.days)+'%',Math.max(0,m.days-t),...m.takenMonths];});
-  const ws2=XLSX.utils.aoa_to_sheet([lvH,...lvR]);
-  ws2['!cols']=[{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},...MONTHS.map(()=>({wch:7}))];
-  XLSX.utils.book_append_sheet(wb,ws2,'有休取得');
-  XLSX.writeFile(wb,`地域インフラ共創1課_中期計画_${new Date().toISOString().slice(0,10)}.xlsx`);
-}
-
-/* ═══ ⑤ 印刷（PC推奨の確認付き） ═══ */
-function doPrint(){
-  // モバイル判定（⑤ 印刷推奨ルール）
-  if(/iPhone|iPad|Android/i.test(navigator.userAgent)){
-    if(!confirm('📱 モバイルからの印刷はレイアウトが崩れることがあります。\nPCからの印刷を推奨します。\n\nこのまま続けますか？')) return;
-  }
-  const main=document.querySelector("#dashboardSection .main"),topRow=document.getElementById("topRow");
-  main.style.cssText="display:grid;grid-template-columns:1fr 1fr;grid-template-areas:'kpi kpi' 'alert alert' 'ot summary' 'member member';gap:5px;padding:4px 0 0;max-width:1050px";
-  topRow.style.display="contents";
-  [["kpiGrid","kpi"],["alertPanel","alert"],["otCard","ot"],["summaryCard","summary"],["memberCard","member"]]
-    .forEach(([id,area])=>{const el=document.getElementById(id);if(el)el.style.gridArea=area;});
-  void document.getElementById("otCard").offsetWidth;
-  const yc=getYC(); if(otChartInst) otChartInst.destroy();
-  otChartInst=new Chart(document.getElementById("otChart"),buildOTChartConfig(yc));
-  setTimeout(()=>window.print(),300);
-}
-window.addEventListener("afterprint",()=>{
-  const main=document.querySelector("#dashboardSection .main"),topRow=document.getElementById("topRow");
-  main.style.cssText=""; topRow.style.display="";
-  ["kpiGrid","alertPanel","otCard","summaryCard","memberCard"].forEach(id=>{const el=document.getElementById(id);if(el)el.style.gridArea="";});
-  setTimeout(()=>{ renderOTChart(); },80);
-});
 
 /* ═══ 初期化 ═══ */
 /* ═══════════ 売上データ ═══════════ */
-const SALES_YEARS = ['2025','2026','2027','2028'];
 const U2_COLOR  = '#185FA5';
 const U3_COLOR  = '#854F0B';
 const TOT_COLOR = '#0F6E56';
 let selSalesYear    = DEFAULT_YEAR; // グラフ表示年度
-let salesInputYear  = DEFAULT_YEAR; // 入力タブ年度
 let salesChartInst  = null;
 
 /* ── 売上KPI ── */
@@ -1702,31 +1184,6 @@ function renderSalesChart(){
   });
 }
 
-function updateSalesTarget(unit, val){
-  if(!salesTargets[salesInputYear]) salesTargets[salesInputYear]={unit2:null,unit3:null,total:null};
-  salesTargets[salesInputYear][unit]=(val===''||val===null)?null:parseFloat(val);
-  saveData(); renderSalesKPI(); renderSalesSummary();
-}
-function renderSalesTargetInputs(){
-  const t=salesTargets[salesInputYear]||{unit2:null,unit3:null,total:null};
-  const fields=[
-    {key:'unit2',label:'ユニット2目標',color:U2_COLOR},
-    {key:'unit3',label:'ユニット3目標',color:U3_COLOR},
-    {key:'total',label:'合算目標',    color:TOT_COLOR},
-  ];
-  document.getElementById('salesTargetInputs').innerHTML=fields.map(f=>`
-    <div style="display:flex;flex-direction:column;gap:3px">
-      <label style="font-size:10px;font-weight:600;color:${f.color}">${f.label}</label>
-      <div style="display:flex;align-items:center;gap:4px">
-        <input type="number" min="0" step="1"
-          style="width:100%;padding:4px 7px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;text-align:right;${t[f.key]!=null?'background:#EAF3DE;border-color:#639922;font-weight:600':''}"
-          value="${t[f.key]??''}" placeholder="—"
-          oninput="updateSalesTarget('${f.key}',this.value)">
-        <span style="font-size:10px;color:#64748b;flex-shrink:0">万円</span>
-      </div>
-    </div>`).join('');
-}
-
 /* ── 年度サマリーテーブル（ダッシュボード） ── */
 let _salesDonutInsts = {}; // ドーナツチャートインスタンス管理
 
@@ -1851,56 +1308,6 @@ function fmtOkuUnit(v){
   return Math.abs(Number(v))>=10000?'円':'万円';
 }
 
-function setSalesInputYear(y,btn){
-  salesInputYear=y;
-  document.querySelectorAll('.year-input-tab[id^="stab"]').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderSalesTargetInputs();
-  renderSalesInputGrid();
-}
-function renderSalesInputGrid(){
-  renderSalesTargetInputs();
-  ['unit2','unit3'].forEach(unit=>{
-    const gridId = unit==='unit2'?'salesU2Grid':'salesU3Grid';
-    document.getElementById(gridId).innerHTML=MONTHS.map((m,i)=>{
-      const v=salesData[salesInputYear]?.[unit]?.[i]??null;
-      const isCur=i===FISCAL_IDX&&salesInputYear===String(FISCAL_YEAR);
-      const cls=v!==null?'has-value':'';
-      return `<div class="ot-cell">
-        <label class="${isCur?'current-month-label':''}">${isCur?'▼':''}${m}</label>
-        <input type="number" class="ot-input ${cls}${isCur?' current-month-input':''}" min="0" step="1"
-          value="${v??''}" placeholder="—"
-          oninput="updateSales('${unit}',${i},this.value)">
-      </div>`;
-    }).join('');
-  });
-  updateSalesSummary();
-}
-function updateSales(unit,idx,val){
-  if(!salesData[salesInputYear]) salesData[salesInputYear]={unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
-  salesData[salesInputYear][unit][idx]=(val===''||val===null)?null:parseFloat(val);
-  const inp=document.querySelectorAll(`#sales${unit==='unit2'?'U2':'U3'}Grid .ot-input`)[idx];
-  if(inp){
-    inp.className='ot-input'+(idx===FISCAL_IDX&&salesInputYear===String(FISCAL_YEAR)?' current-month-input':'')
-      +' '+(salesData[salesInputYear][unit][idx]!==null?'has-value':'');
-  }
-  updateSalesSummary();
-  renderSalesChart(); renderSalesKPI(); renderSalesSummary();
-  saveData();
-}
-function updateSalesSummary(){
-  const yr=salesInputYear;
-  const u2=sumArr((salesData[yr]?.unit2||[]).filter(v=>v!==null));
-  const u3=sumArr((salesData[yr]?.unit3||[]).filter(v=>v!==null));
-  document.getElementById('salesU2Total').textContent=u2>0?fmtOku(u2):'— 万円';
-  document.getElementById('salesU3Total').textContent=u3>0?fmtOku(u3):'— 万円';
-  document.getElementById('salesTotalAll').textContent=(u2+u3)>0?fmtOku(u2+u3):'— 万円';
-}
-function clearSalesYear(){
-  salesData[salesInputYear]={unit2:new Array(12).fill(null),unit3:new Array(12).fill(null)};
-  renderSalesInputGrid(); renderSalesChart(); renderSalesKPI(); renderSalesSummary(); saveData();
-}
-
 function renderAll(){
   renderTodayBadge(); renderKPI(); renderAlerts();
   renderYearBtns(); renderOTLegend(); renderOTChart(); renderProgress();
@@ -1916,14 +1323,7 @@ async function init(){
   renderAll();
   // その後、裏でGASから最新データ（メインデータ＋メンバー設定を1回の通信で取得）を反映して再描画
   const ok = await loadFromGAS();
-  if(ok){
-    // 実績入力画面をすでに操作中の場合は、入力中のデータを上書きしないためここでは反映しない
-    // ⑲ loadFromGAS()が既にlocalStorageへ同期済みなので、ここでsaveData()は呼ばない。
-    // 呼ぶと未ログイン時は空のpinHashでGASへ書き戻そうとして毎回認証エラー（保存失敗表示）になり、
-    // PINの失敗カウントも消費してしまう（閲覧者が増えるほど管理者ログインのロックアウトに近づく）。
-    const inputActive = document.getElementById('inputSection')?.classList.contains('active');
-    if(!inputActive){ renderAll(); }
-  }
+  if(ok) renderAll();
 }
 init();
 document.querySelectorAll(".modal-bg").forEach(bg=>bg.addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal();}));
