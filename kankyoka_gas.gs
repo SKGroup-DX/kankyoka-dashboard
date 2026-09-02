@@ -824,14 +824,27 @@ function normalizeSheetName_(s) {
     .replace(/\s+/g, '') // 空白（全角/半角問わず）を除去
     .trim();
 }
+// 診断用: 文字列を1文字ずつ "U+XXXX" のコードポイント列にする（見た目では分からない差異を特定するため）
+function toCodePoints_(s) {
+  return Array.from(String(s || '')).map(ch =>
+    'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')
+  ).join(' ');
+}
 
 function importSalesData_() {
   const srcSs = SpreadsheetApp.openById(SALES_SOURCE_SHEET_ID);
   const target = normalizeSheetName_(SALES_SOURCE_TAB);
   const srcSheet = srcSs.getSheets().find(s => normalizeSheetName_(s.getName()) === target);
   if (!srcSheet) {
-    const actualNames = srcSs.getSheets().map(s => s.getName()).join('、');
-    throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません（実際のタブ名: ${actualNames}）`);
+    // ⑳ 目視では違いが分からない文字コード差異を特定するため、"地域インフラ共創1課"を含む候補の
+    // 文字コード列（U+XXXX）を1文字ずつ表示する（ゼロ幅文字などが可視化される）
+    const candidates = srcSs.getSheets()
+      .map(s => s.getName())
+      .filter(n => n.indexOf('地域インフラ共創') !== -1)
+      .map(n => `「${n}」 = ${toCodePoints_(n)}`);
+    throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません\n`
+      + `期待する文字コード: ${toCodePoints_(SALES_SOURCE_TAB)}\n`
+      + `候補: ${candidates.join(' / ') || '(該当なし)'}`);
   }
 
   const vals = srcSheet.getRange(SALES_SOURCE_START_ROW, SALES_SOURCE_COL_UNIT2, 12, 2).getValues();
