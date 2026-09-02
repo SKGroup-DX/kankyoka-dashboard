@@ -814,9 +814,21 @@ function rebuildOvertimeMatrixSheet_() {
 /* ═══ ㉑ 売上データ自動反映（別スプレッドシート連携） ═══ */
 // 「実績_地域インフラ共創1課」タブのAK列（ユニット2）・AL列（ユニット3）を今年度分としてそのまま読み取る。
 // 0（未報告の月のプレースホルダ）はnullとして扱い、ダッシュボードでは「—」（未入力）表示にする。
+// 目に見えない文字（ゼロ幅スペース等）や全角/半角の違いを吸収して比較するための正規化
+function normalizeSheetName_(s) {
+  const ZERO_WIDTH = new RegExp('[\\u200B\\u200C\\u200D\\uFEFF]', 'g'); // ゼロ幅スペース等
+  return String(s || '')
+    .replace(ZERO_WIDTH, '')
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)) // 全角英数字→半角
+    .replace(/＿/g, '_') // 全角アンダースコア→半角
+    .replace(/\s+/g, '') // 空白（全角/半角問わず）を除去
+    .trim();
+}
+
 function importSalesData_() {
   const srcSs = SpreadsheetApp.openById(SALES_SOURCE_SHEET_ID);
-  const srcSheet = srcSs.getSheetByName(SALES_SOURCE_TAB);
+  const target = normalizeSheetName_(SALES_SOURCE_TAB);
+  const srcSheet = srcSs.getSheets().find(s => normalizeSheetName_(s.getName()) === target);
   if (!srcSheet) {
     const actualNames = srcSs.getSheets().map(s => s.getName()).join('、');
     throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません（実際のタブ名: ${actualNames}）`);
