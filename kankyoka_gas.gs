@@ -856,7 +856,8 @@ function importSalesData_() {
   }
 
   const vals = srcSheet.getRange(SALES_SOURCE_START_ROW, SALES_SOURCE_COL_UNIT2, 12, 2).getValues();
-  const toVal = v => (v === '' || v == null || Number(v) === 0) ? null : Number(v);
+  // 元データは千円単位、ダッシュボードは万円単位のため ÷10 で変換する（例: 78,095千円 → 7,810万円）
+  const toVal = v => (v === '' || v == null || Number(v) === 0) ? null : Math.round(Number(v) / 10);
   const unit2 = vals.map(r => toVal(r[0]));
   const unit3 = vals.map(r => toVal(r[1]));
 
