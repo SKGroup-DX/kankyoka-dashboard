@@ -830,21 +830,29 @@ function toCodePoints_(s) {
     'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')
   ).join(' ');
 }
+// 診断用: 2つの文字列を厳密比較し、完全一致か、最初に異なる位置とその文字コードを報告する
+// （目視でのコード列比較は写し間違いが起きやすいため、比較自体をコードにやらせる）
+function diffReport_(actual, expected) {
+  if (actual === expected) return `「${actual}」: 完全一致（コード上は一致しているのに見つからない場合はキャッシュ等の別要因）`;
+  const a = Array.from(actual), e = Array.from(expected);
+  const len = Math.max(a.length, e.length);
+  let i = 0;
+  while (i < len && a[i] === e[i]) i++;
+  const codeOf = ch => ch ? 'U+' + ch.codePointAt(0).toString(16).toUpperCase().padStart(4, '0') : '(文字なし)';
+  return `「${actual}」: 不一致 / 文字数 実際${a.length}文字・期待${e.length}文字 / `
+    + `${i + 1}文字目が違う → 実際は${codeOf(a[i])}「${a[i] || ''}」、期待は${codeOf(e[i])}「${e[i] || ''}」`;
+}
 
 function importSalesData_() {
   const srcSs = SpreadsheetApp.openById(SALES_SOURCE_SHEET_ID);
   const target = normalizeSheetName_(SALES_SOURCE_TAB);
   const srcSheet = srcSs.getSheets().find(s => normalizeSheetName_(s.getName()) === target);
   if (!srcSheet) {
-    // ⑳ 目視では違いが分からない文字コード差異を特定するため、"地域インフラ共創1課"を含む候補の
-    // 文字コード列（U+XXXX）を1文字ずつ表示する（ゼロ幅文字などが可視化される）
-    const candidates = srcSs.getSheets()
-      .map(s => s.getName())
-      .filter(n => n.indexOf('地域インフラ共創') !== -1)
-      .map(n => `「${n}」 = ${toCodePoints_(n)}`);
-    throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません\n`
-      + `期待する文字コード: ${toCodePoints_(SALES_SOURCE_TAB)}\n`
-      + `候補: ${candidates.join(' / ') || '(該当なし)'}`);
+    // ㉒ 目視でのコード比較は写し間違いが起きやすいため、コード自身に厳密比較させ、
+    // 相違点（何文字目がどう違うか）だけをピンポイントで報告する
+    const candidates = srcSs.getSheets().map(s => s.getName()).filter(n => n.indexOf('地域インフラ共創') !== -1);
+    const reports = candidates.map(n => diffReport_(n, SALES_SOURCE_TAB));
+    throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません\n` + reports.join('\n'));
   }
 
   const vals = srcSheet.getRange(SALES_SOURCE_START_ROW, SALES_SOURCE_COL_UNIT2, 12, 2).getValues();
