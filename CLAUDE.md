@@ -6,7 +6,7 @@
 
 残業・有休・売上KPIをGASバックエンドと連携して可視化するダッシュボード。
 
-URL: https://kasuyakouta.github.io/kankyoka-dashboard/
+URL: https://skgroup-dx.github.io/kankyoka-dashboard/
 
 
 
