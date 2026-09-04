@@ -260,6 +260,11 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
   </div>
 </header>
 
+<!-- ㉓ 起動時、GASへの確認が終わるまで表示（キャッシュの数値が古い可能性を明示する） -->
+<div id="syncBanner" style="display:none;background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:6px 20px;font-size:11px;color:#1d4ed8;text-align:center">
+  🔄 最新データを確認しています…
+</div>
+
 <!-- ダッシュボード -->
 <div id="dashboardSection">
   <div class="main">
@@ -452,7 +457,8 @@ let members    = INIT_MEMBERS.map(m=>({...m,takenMonths:[...m.takenMonths]}));
 let groups     = [];
 let memberOvertime = {}; // ⑪ メンバー別残業実績（取込データ（月別）由来）: {氏名:{年度:[12ヶ月分h or null]}}
 let memberLeaveRemaining = {}; // ⑱ メンバー別 直近取込月の有休残日数: {氏名:{days,asOf}}
-let gasDataLoaded = false; // ⑮ GASからの初回取得が完了したか（未完了時は「データなし」と「読込中」を区別する）
+let gasDataLoaded = false; // ⑮ GASからの初回取得が成功したか（未完了時は「データなし」と「読込中」を区別する）
+let gasCheckDone  = false; // ㉓ GASへの初回確認が完了したか（成功/失敗を問わない。「確認中」表示の終了条件に使う）
 let gasUrl     = '';
 
 function setSaveStatus(s){
@@ -538,7 +544,7 @@ function loadFromLocalStorage(){
 // ⑩ 高速化② GASへの通信を1回にまとめて取得（メインデータ + メンバー設定ロースターを同梱）
 // 成功時はtrue、失敗/未接続時はfalseを返す
 async function loadFromGAS(){
-  if(!gasUrl) return false;
+  if(!gasUrl){ gasCheckDone=true; return false; }
   setSaveStatus('loading');
   try{
     const res=await fetchWithTimeout(gasUrl+'?t='+Date.now(),{redirect:'follow'});
@@ -556,6 +562,8 @@ async function loadFromGAS(){
   }catch(e){
     setSaveStatus('idle');
     return false; // GAS失敗 → 直前にlocalStorageから読み込んだ内容のまま表示を継続
+  }finally{
+    gasCheckDone=true; // ㉓ 成功・失敗どちらでも「確認中」表示は終わらせる
   }
 }
 
@@ -764,7 +772,7 @@ function renderOTLegend(){
   const yc=getYC();
   // ⑲ 初回表示はローカルキャッシュ（前回訪問時点の値）のため、GAS確認完了までは
   // 数値が更新される可能性があることを示す（表示速度を落とさず、古い値だと分かるように）
-  const checking = !gasDataLoaded ? '🔄 最新データ確認中… ／ ' : '';
+  const checking = !gasCheckDone ? '🔄 最新データ確認中… ／ ' : '';
   document.getElementById("otCardSub").textContent=`${checking}2025年度実績 vs ${selYear}年度目標（${yc.reduction}%削減）`;
   document.getElementById("otLegend").innerHTML=`
     <div class="legend-item"><span class="legend-dash" style="border-color:${OT25_COLOR};border-top-width:1.25px"></span>2025実績</div>
@@ -963,7 +971,7 @@ function renderMemberOtChart(){
   const sub = document.getElementById("memberOtCardSub");
   sub.textContent = hasData
     ? "勤怠データ自動取込で反映された月のみ表示（欠損月は空白）"
-    : !gasDataLoaded
+    : !gasCheckDone
       ? "読込中…" // ⑮ サーバーからの取得が完了していないだけの場合、「データなし」と誤解させない
       : `${selMemberOtYear}年度は${selMemberOtName?escapeHtml(selMemberOtName)+"さんの":""}取込データがまだありません`;
   const tickColors=MONTHS.map((_,i)=>i===FISCAL_IDX?"#EAB308":"#64748b");
@@ -1321,9 +1329,14 @@ async function init(){
   // ⑩ 高速化: まずローカルキャッシュを即座に反映・描画（通信を待たせない）
   loadFromLocalStorage();
   renderAll();
+  // ㉓ GASへの確認中はバナーで明示。gasUrl未設定なら確認自体しないので表示不要
+  const banner = document.getElementById('syncBanner');
+  if(banner && gasUrl) banner.style.display = 'block';
   // その後、裏でGASから最新データ（メインデータ＋メンバー設定を1回の通信で取得）を反映して再描画
-  const ok = await loadFromGAS();
-  if(ok) renderAll();
+  // 失敗時もrenderAllし直す（成功なら最新データを反映、失敗でも「確認中」表示を終わらせるため）
+  await loadFromGAS();
+  if(banner) banner.style.display = 'none';
+  renderAll();
 }
 init();
 document.querySelectorAll(".modal-bg").forEach(bg=>bg.addEventListener("click",e=>{if(e.target===e.currentTarget)closeModal();}));
