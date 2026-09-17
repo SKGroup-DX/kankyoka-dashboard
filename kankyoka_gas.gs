@@ -185,7 +185,6 @@ const VALID_ACTUAL_YEARS    = ['2026', '2027', '2028']; // actualDataで管理�
 // ㉑ 売上データの自動反映元（別スプレッドシート）
 const SALES_SOURCE_SHEET_ID  = '1pvCvTXBPX28-DgzGmRQMTESUkFcBS_yfk_SWQmIcYgY';
 const SALES_SOURCE_TAB       = '実績_地域インフラ共創部1課';
-const SALES_SOURCE_START_ROW = 3;  // この行が「4月」（以降12行で3月まで）
 const SALES_SOURCE_COL_UNIT2 = 37; // AK列
 const SALES_SOURCE_COL_UNIT3 = 38; // AL列
 
@@ -683,11 +682,27 @@ function importSalesData_() {
     throw new Error(`売上元シートに「${SALES_SOURCE_TAB}」タブが見つかりません\n` + reports.join('\n'));
   }
 
-  const vals = srcSheet.getRange(SALES_SOURCE_START_ROW, SALES_SOURCE_COL_UNIT2, 12, 2).getValues();
-  // 元データは千円単位、ダッシュボードは万円単位のため ÷10 で変換する（例: 78,095千円 → 7,810万円）
+  // ㉔ 固定行オフセットだけに頼ると、元シートで行が挿入/削除されたときに月がずれて取り違える
+  // （8月分だけ反映されない、といった不具合の原因になる）。AJ列の「月」ラベルを実際に読み、
+  // ラベルで突き合わせることで、行位置がずれても正しい月に対応づける
+  const lastRow = srcSheet.getLastRow();
+  const scanRows = Math.max(1, Math.min(lastRow, 200));
+  const block = srcSheet.getRange(1, SALES_SOURCE_COL_UNIT2 - 1, scanRows, 3).getValues(); // AJ,AK,AL
   const toVal = v => (v === '' || v == null || Number(v) === 0) ? null : Math.round(Number(v) / 10);
-  const unit2 = vals.map(r => toVal(r[0]));
-  const unit3 = vals.map(r => toVal(r[1]));
+  const unit2 = new Array(12).fill(null);
+  const unit3 = new Array(12).fill(null);
+  const foundMonths = new Set();
+  block.forEach(row => {
+    const idx = MONTHS.indexOf(String(row[0] || '').trim());
+    if (idx === -1) return;
+    unit2[idx] = toVal(row[1]);
+    unit3[idx] = toVal(row[2]);
+    foundMonths.add(MONTHS[idx]);
+  });
+  if (foundMonths.size < 12) {
+    const missing = MONTHS.filter(m => !foundMonths.has(m));
+    Logger.log(`売上データ取込: AJ列で見つからなかった月 → ${missing.join('、')}`);
+  }
 
   const now = new Date();
   const curFiscalYear = String(now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1);
@@ -707,7 +722,10 @@ function importSalesData_() {
   writeSalesSheet_(data);
 
   const reportedMonths = unit2.filter(v => v != null).length;
-  return `${curFiscalYear}年度 / 反映済み${reportedMonths}ヶ月分`;
+  const monthNote = foundMonths.size < 12
+    ? `（AJ列で見つからなかった月: ${MONTHS.filter(m => !foundMonths.has(m)).join('、')}）`
+    : '';
+  return `${curFiscalYear}年度 / 反映済み${reportedMonths}ヶ月分${monthNote}`;
 }
 
 /* ─── 新規の勤怠ファイル取込を待たず、売上データだけを今すぐ反映し直す ─── */
