@@ -366,16 +366,20 @@ function parseAttendanceFile_(file) {
 }
 
 /* ─── xlsxをGoogleスプレッドシートへ一時変換してセル値を読み取る（読了後は即削除） ─── */
+// ㉕ supportsAllDrives: 共有ドライブ内のファイル、または取込フォルダの持ち主とは別の人が
+// アップロードしたファイルを対象にするとDrive.Files.copyが「File not found」を返すことがある。
+// このオプションを付けることで共有ドライブ配下のファイルも正しく扱えるようにする（通常のマイドライブでは無害）
 function readXlsxAsValues_(file) {
   const tmp = withRetry_(() => Drive.Files.copy(
     { name: '__tmp_import_' + file.getId(), mimeType: MimeType.GOOGLE_SHEETS },
-    file.getId()
+    file.getId(),
+    { supportsAllDrives: true }
   ));
   try {
     const ss = withRetry_(() => SpreadsheetApp.openById(tmp.id));
     return ss.getSheets()[0].getDataRange().getValues();
   } finally {
-    try { withRetry_(() => Drive.Files.remove(tmp.id)); }
+    try { withRetry_(() => Drive.Files.remove(tmp.id, { supportsAllDrives: true })); }
     catch (e) { /* 一時ファイルの削除失敗は無視（ドライブのゴミ箱に残るのみで実害なし） */ }
   }
 }
