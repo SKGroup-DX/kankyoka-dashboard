@@ -28,7 +28,9 @@ URL: https://skgroup-dx.github.io/kankyoka-dashboard/
 
 \- \*\*kankyoka\_gas.gs側のPIN認証(verify\_pin/change\_pin/checkPinAuth\_)は削除済み\*\*。副次的に、削除前のdoPostからしか呼ばれていなかった`writeLeaveSheet\_`(有休取得シート)・`writeSalesTargetSheet\_`(売上目標シート)も未使用になったため削除——これら2シートは以後自動更新されない(氏名・グループ・付与日数・取得数は引き続き「メンバー設定」シートで正しく管理される)
 
-\- \*\*ダッシュボード下部に勤怠Excelのドラッグ&ドロップ欄がある\*\*(㉖、フロント側`setupUploadDropZone\_`等、GAS側`doPost`)。ファイルをbase64化してGASへPOSTし、「勤怠データ取込」フォルダへ保存するだけ(解析・反映はしない、既存の日次トリガー/手動メニュー「今すぐ取込む」任せ)。\*\*認証なし\*\*(公開URLを知っていれば誰でもアップロード可、了承済みの設計)。拡張子`.xlsx`と5MB上限のみサーバー側でチェック
+\- \*\*ダッシュボード下部に勤怠Excelのドラッグ&ドロップ欄がある\*\*(㉖、フロント側`setupUploadDropZone`等、GAS側`doPost`)。ファイルをbase64化してGASへPOSTし、「勤怠データ取込」フォルダへ保存する。\*\*認証なし\*\*(公開URLを知っていれば誰でもアップロード可、了承済みの設計)。拡張子`.xlsx`と5MB上限のみサーバー側でチェック
+
+&nbsp;&nbsp;- ㉗ アップロード後は\*\*即時反映ではなく\*\*、`scheduleImportSoon\_()`が20秒後に1回だけ`importAttendanceFiles`を実行する1回限りトリガーを予約する(スクリプトプロパティ`IMPORT\_SOON\_UNTIL`で二重予約を防止)。複数ファイルを連続アップロードしても、その間の分をまとめて1回の取込で処理するため。毎日6時台の既存トリガーとは別物で、両方が共存する
 
 \- KPIカードはwarn/danger/ok/neutralの4状態で色分け表示、トレンド(up-bad/up-good/dn-bad/dn-good)も表示
 

@@ -7,6 +7,7 @@
 //   ㉒ ダッシュボードは読込専用になったため、PIN認証・doPost（書込み）を廃止
 //   ㉖ ダッシュボードのドラッグ&ドロップ欄からの勤怠Excelアップロード用に、
 //      認証なしのdoPost（ファイル保存のみ）を再度追加
+//   ㉗ アップロード後、20秒待ってから取込を1回だけ予約実行する仕組みを追加
 // ============================================================
 
 const SHEET_JSON     = 'ダッシュボードデータ';
@@ -55,10 +56,36 @@ function doPost(e) {
     const blob = Utilities.newBlob(bytes, MimeType.MICROSOFT_EXCEL, name);
     const { inbox } = getImportFolders_();
     const file = inbox.createFile(blob);
+    scheduleImportSoon_(); // ㉗ 少し待ってから自動取込を1回だけ予約実行（複数ファイル連続アップロードをまとめて処理）
     return ok_(JSON.stringify({ status: 'uploaded', fileId: file.getId(), name }));
   } catch (err) {
     return ok_(JSON.stringify({ error: err.message }));
   }
+}
+
+/* ─── ㉗ アップロード後、少し待ってから取込を1回だけ予約実行する ─── */
+// 複数ファイルを連続アップロードした場合、1件ごとに取込を走らせると非効率かつ
+// 「今処理中のファイルしか反映しない」実行が何度も起きてしまうため、
+// 直近の予約が生きている間は新規予約をスキップしてまとめて処理する。
+const IMPORT_SOON_DELAY_MS = 20 * 1000; // 20秒待ってから実行（連続ドロップをまとめるための猶予）
+function scheduleImportSoon_() {
+  const props = PropertiesService.getScriptProperties();
+  const until = Number(props.getProperty('IMPORT_SOON_UNTIL') || 0);
+  if (until > Date.now()) return; // 既に予約済みなのでスキップ
+  ScriptApp.newTrigger('runScheduledImport_').timeBased().after(IMPORT_SOON_DELAY_MS).create();
+  props.setProperty('IMPORT_SOON_UNTIL', String(Date.now() + IMPORT_SOON_DELAY_MS + 5000));
+}
+
+/* ─── ㉗ 予約された取込を実行する（1回限りのトリガーから呼ばれる） ─── */
+function runScheduledImport_() {
+  PropertiesService.getScriptProperties().deleteProperty('IMPORT_SOON_UNTIL');
+  // 1回限りのトリガーはGASが自動削除するが、念のため自分自身が残っていれば片付ける
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'runScheduledImport_') {
+      try { ScriptApp.deleteTrigger(t); } catch (e) { /* 既に削除済みなら無視 */ }
+    }
+  });
+  importAttendanceFiles();
 }
 
 /* ─── ⑨ メンバー設定シート（氏名・グループ・付与日数・取得数はここが正） ─── */

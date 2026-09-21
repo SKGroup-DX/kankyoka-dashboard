@@ -389,7 +389,7 @@ select{font-size:11px;border:1px solid #e2e8f0;border-radius:7px;padding:4px 24p
     <div class="card">
       <div class="card-title">📤 勤怠データ アップロード</div>
       <div class="card-sub" style="margin-bottom:8px">
-        勤怠システムから出力したExcel(.xlsx)をここにドラッグ&ドロップしてください。保存されるだけで、実際の反映は1日1回の自動取込（または管理者による手動実行）で行われます。
+        勤怠システムから出力したExcel(.xlsx)をここにドラッグ&ドロップしてください。アップロード後、20〜30秒ほどで自動的に取込・反映されます（複数ファイルをまとめて送った場合も1回にまとめて処理されます）。
       </div>
       <div id="uploadDropZone" class="upload-drop-zone">
         <div id="uploadDropZoneText">📎 ここにファイルをドラッグ&ドロップ<br><span style="font-size:10px;color:#94a3b8">またはクリックして選択（.xlsx、複数可）</span></div>
@@ -1429,7 +1429,7 @@ async function uploadOneFile(file, rowId){
       headers:{'Content-Type':'text/plain;charset=utf-8'}, body}, 30000);
     const json = await res.json();
     if(json.error) throw new Error(json.error);
-    const el = stateEl(); if(el){ el.textContent='✅ 送信済み（次回取込で反映）'; el.className='state ok'; }
+    const el = stateEl(); if(el){ el.textContent='✅ 送信済み（まもなく自動反映）'; el.className='state ok'; }
   }catch(e){
     const el = stateEl(); if(el){ el.textContent='⚠️ 失敗: '+(e.message||'通信エラー'); el.className='state error'; }
   }
