@@ -5,6 +5,8 @@
 //   ⑩ 勤怠データ（Excel）のGoogleドライブ自動取込
 //   ㉑ 売上データの別スプレッドシートからの自動取込
 //   ㉒ ダッシュボードは読込専用になったため、PIN認証・doPost（書込み）を廃止
+//   ㉖ ダッシュボードのドラッグ&ドロップ欄からの勤怠Excelアップロード用に、
+//      認証なしのdoPost（ファイル保存のみ）を再度追加
 // ============================================================
 
 const SHEET_JSON     = 'ダッシュボードデータ';
@@ -29,6 +31,31 @@ function doGet(e) {
     // ⑱ メンバー別の直近取込月の有休残日数（あれば返す。失敗してもメインデータは返す）
     try { data.memberLeaveRemaining = readMemberLeaveRemaining_(); } catch (e) { /* 読込失敗時はメインデータのみ返す */ }
     return ok_(JSON.stringify(data));
+  } catch (err) {
+    return ok_(JSON.stringify({ error: err.message }));
+  }
+}
+
+/* ─── POST: ダッシュボードのドラッグ&ドロップ欄から勤怠Excelを受け取り、 ㉖
+   「勤怠データ取込」フォルダへ保存するだけ（解析・反映は既存の日次トリガー／
+   手動メニュー「今すぐ取込む」に任せる）。認証なし＝URLを知っていれば誰でも送信可 ─── */
+const UPLOAD_MAX_BYTES = 5 * 1024 * 1024; // 5MB（正規のExcelファイルは数十KB程度の想定）
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    const name = String(body.name || '').trim();
+    const base64 = String(body.base64 || '');
+    if (!name || !base64) return ok_(JSON.stringify({ error: 'ファイルが指定されていません' }));
+    if (!/\.xlsx$/i.test(name)) return ok_(JSON.stringify({ error: '.xlsxファイルのみアップロードできます' }));
+
+    const bytes = Utilities.base64Decode(base64);
+    if (bytes.length > UPLOAD_MAX_BYTES) {
+      return ok_(JSON.stringify({ error: 'ファイルサイズが大きすぎます（5MBまで）' }));
+    }
+    const blob = Utilities.newBlob(bytes, MimeType.MICROSOFT_EXCEL, name);
+    const { inbox } = getImportFolders_();
+    const file = inbox.createFile(blob);
+    return ok_(JSON.stringify({ status: 'uploaded', fileId: file.getId(), name }));
   } catch (err) {
     return ok_(JSON.stringify({ error: err.message }));
   }
