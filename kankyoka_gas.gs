@@ -728,6 +728,23 @@ function diffReport_(actual, expected) {
     + `${i + 1}文字目が違う → 実際は${codeOf(a[i])}「${a[i] || ''}」、期待は${codeOf(e[i])}「${e[i] || ''}」`;
 }
 
+// ㉘ AJ列の月ラベルを年度内インデックス(0=4月…11=3月)に変換。
+// 「4月」だけでなく、日付型・「４月」・「4月分」・「2026/4」・数値の4 なども受け付ける
+function monthLabelToIdx_(v) {
+  let m = null;
+  if (v instanceof Date && !isNaN(v)) {
+    m = v.getMonth() + 1;
+  } else if (typeof v === 'number') {
+    if (v >= 1 && v <= 12 && Math.floor(v) === v) m = v;
+  } else {
+    const s = String(v || '').replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).trim();
+    let r = s.match(/(\d{1,2})\s*月/) || s.match(/^\d{4}\s*[\/\-.年]\s*(\d{1,2})/);
+    if (r) m = Number(r[1]);
+  }
+  if (!m || m < 1 || m > 12) return -1;
+  return m >= 4 ? m - 4 : m + 8;
+}
+
 function importSalesData_() {
   const srcSs = SpreadsheetApp.openById(SALES_SOURCE_SHEET_ID);
   const target = normalizeSheetName_(SALES_SOURCE_TAB);
@@ -751,12 +768,18 @@ function importSalesData_() {
   const unit3 = new Array(12).fill(null);
   const foundMonths = new Set();
   block.forEach(row => {
-    const idx = MONTHS.indexOf(String(row[0] || '').trim());
+    const idx = monthLabelToIdx_(row[0]);
     if (idx === -1) return;
     unit2[idx] = toVal(row[1]);
     unit3[idx] = toVal(row[2]);
     foundMonths.add(MONTHS[idx]);
   });
+  // ㉘ 月ラベルが1つも見つからない＝元シートの形式が変わった可能性が高い。
+  // この状態で保存すると今年度の売上が全て空で上書きされてしまうため、保存せずエラーにする
+  if (foundMonths.size === 0) {
+    const sample = block.slice(0, 20).map(r => JSON.stringify(r[0])).filter(s => s !== '""').slice(0, 8).join('、');
+    throw new Error(`AJ列に月ラベルが見つかりませんでした（既存データは保持しています）。AJ列の先頭付近の値: ${sample || '(空)'}`);
+  }
   if (foundMonths.size < 12) {
     const missing = MONTHS.filter(m => !foundMonths.has(m));
     Logger.log(`売上データ取込: AJ列で見つからなかった月 → ${missing.join('、')}`);
