@@ -762,7 +762,22 @@ function importSalesData_() {
   // ラベルで突き合わせることで、行位置がずれても正しい月に対応づける
   const lastRow = srcSheet.getLastRow();
   const scanRows = Math.max(1, Math.min(lastRow, 200));
-  const block = srcSheet.getRange(1, SALES_SOURCE_COL_UNIT2 - 1, scanRows, 3).getValues(); // AJ,AK,AL
+  // ㉙ 元シートで列が削除/挿入されると固定の列番号ではずれるため、見出し「ユニット2」「ユニット3」の
+  // 位置から列を探す（月ラベル列はユニット2列のすぐ左）。見つからなければ従来の固定列で読む
+  const lastCol = srcSheet.getLastColumn();
+  const head = srcSheet.getRange(1, 1, Math.min(5, scanRows), lastCol).getValues();
+  let u2Col = 0, u3Col = 0;
+  head.forEach(r => r.forEach((v, c) => {
+    const s = String(v || '').replace(/\s/g, '').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+    if (!u2Col && /ユニット2/.test(s)) u2Col = c + 1;
+    if (!u3Col && /ユニット3/.test(s)) u3Col = c + 1;
+  }));
+  if (!u2Col) u2Col = SALES_SOURCE_COL_UNIT2;
+  if (!u3Col) u3Col = SALES_SOURCE_COL_UNIT3;
+  const monthsCol = srcSheet.getRange(1, u2Col - 1, scanRows, 1).getValues();
+  const u2Vals = srcSheet.getRange(1, u2Col, scanRows, 1).getValues();
+  const u3Vals = srcSheet.getRange(1, u3Col, scanRows, 1).getValues();
+  const block = monthsCol.map((r, i) => [r[0], u2Vals[i][0], u3Vals[i][0]]); // [月, ユニット2, ユニット3]
   const toVal = v => (v === '' || v == null || Number(v) === 0) ? null : Math.round(Number(v) / 10);
   const unit2 = new Array(12).fill(null);
   const unit3 = new Array(12).fill(null);
